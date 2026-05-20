@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Make Football Goat Again 🐐</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a0e1a; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0a0e1a; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const STORAGE_KEY = "mondial2026-data";
+
+    const GROUPS = [
+      { id: "A", teams: ["Mexique", "Afrique du Sud", "Corée du Sud", "Rép. tchèque"] },
+      { id: "B", teams: ["Canada", "Bosnie-Herzégovine", "Qatar", "Suisse"] },
+      { id: "C", teams: ["Brésil", "Maroc", "Haïti", "Écosse"] },
+      { id: "D", teams: ["États-Unis", "Paraguay", "Australie", "Turquie"] },
+      { id: "E", teams: ["Allemagne", "Curaçao", "Côte d'Ivoire", "Équateur"] },
+      { id: "F", teams: ["Pays-Bas", "Japon", "Suède", "Tunisie"] },
+      { id: "G", teams: ["Belgique", "Égypte", "Iran", "Nouvelle-Zélande"] },
+      { id: "H", teams: ["Espagne", "Cap-Vert", "Arabie Saoudite", "Uruguay"] },
+      { id: "I", teams: ["France", "Sénégal", "Irak", "Norvège"] },
+      { id: "J", teams: ["Argentine", "Algérie", "Autriche", "Jordanie"] },
+      { id: "K", teams: ["Portugal", "RD Congo", "Ouzbékistan", "Colombie"] },
+      { id: "L", teams: ["Angleterre", "Croatie", "Ghana", "Panama"] },
+    ];
+
+    const BONUS_TYPES = [
+      { id: "winner",   label: "Vainqueur du tournoi",                       points: 10, count: 1 },
+      { id: "finalist", label: "Finalistes (les 2)",                         points: 5,  count: 2 },
+      { id: "semi",     label: "Demi-finalistes (les 4)",                    points: 3,  count: 4 },
+      { id: "topscorer",label: "Meilleur buteur",                            points: 5,  count: 1 },
+      { id: "surprise", label: "Meilleure surprise (hors top 10 en demi)",   points: 7,  count: 1 },
+      { id: "upset",    label: "Favori éliminé en groupes",                  points: 6,  count: 1 },
+    ];
+
+    const TABS = ["Participants", "Matchs", "Bonus", "Classement"];
+
+    const FLAG_EMOJIS = {
+      "Mexique": "🇲🇽", "Afrique du Sud": "🇿🇦", "Corée du Sud": "🇰🇷", "Rép. tchèque": "🇨🇿",
+      "Canada": "🇨🇦", "Bosnie-Herzégovine": "🇧🇦", "Qatar": "🇶🇦", "Suisse": "🇨🇭",
+      "Brésil": "🇧🇷", "Maroc": "🇲🇦", "Haïti": "🇭🇹", "Écosse": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+      "États-Unis": "🇺🇸", "Paraguay": "🇵🇾", "Australie": "🇦🇺", "Turquie": "🇹🇷",
+      "Allemagne": "🇩🇪", "Curaçao": "🇨🇼", "Côte d'Ivoire": "🇨🇮", "Équateur": "🇪🇨",
+      "Pays-Bas": "🇳🇱", "Japon": "🇯🇵", "Suède": "🇸🇪", "Tunisie": "🇹🇳",
+      "Belgique": "🇧🇪", "Égypte": "🇪🇬", "Iran": "🇮🇷", "Nouvelle-Zélande": "🇳🇿",
+      "Espagne": "🇪🇸", "Cap-Vert": "🇨🇻", "Arabie Saoudite": "🇸🇦", "Uruguay": "🇺🇾",
+      "France": "🇫🇷", "Sénégal": "🇸🇳", "Irak": "🇮🇶", "Norvège": "🇳🇴",
+      "Argentine": "🇦🇷", "Algérie": "🇩🇿", "Autriche": "🇦🇹", "Jordanie": "🇯🇴",
+      "Portugal": "🇵🇹", "RD Congo": "🇨🇩", "Ouzbékistan": "🇺🇿", "Colombie": "🇨🇴",
+      "Angleterre": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Croatie": "🇭🇷", "Ghana": "🇬🇭", "Panama": "🇵🇦",
+    };
+
+    function getFlag(name) {
+      if (!name) return "🏳️";
+      return FLAG_EMOJIS[name] || "🏳️";
+    }
+
+    function calcMatchPoints(prono, result) {
+      if (!result || result.home === "" || result.away === "") return 0;
+      if (!prono || prono.home === "" || prono.away === "") return 0;
+      const ph = parseInt(prono.home), pa = parseInt(prono.away);
+      const rh = parseInt(result.home), ra = parseInt(result.away);
+      if (ph === rh && pa === ra) return 3;
+      if (Math.sign(ph - pa) === Math.sign(rh - ra)) return 1;
+      return 0;
+    }
+
+    function buildDefaultMatches() {
+      const ms = [];
+      let id = 1;
+      GROUPS.forEach(g => {
+        for (let i = 0; i < 4; i++) {
+          for (let j = i + 1; j < 4; j++) {
+            ms.push({ id: id++, group: g.id, home: g.teams[i], away: g.teams[j], result: { home: "", away: "" } });
+          }
+        }
+      });
+      return ms;
+    }
+
+    const DEFAULT_PARTICIPANTS = [
+      { id: 1, name: "Maxime", color: "#e63946" },
+      { id: 2, name: "Thomas", color: "#2a9d8f" },
+      { id: 3, name: "Sophie", color: "#f4a261" },
+    ];
+
+    function App() {
+      const [loaded, setLoaded] = useState(false);
+      const [saveMsg, setSaveMsg] = useState("");
+      const [tab, setTab] = useState(0);
+      const [participants, setParticipants] = useState(DEFAULT_PARTICIPANTS);
+      const [newParticipant, setNewParticipant] = useState("");
+      const [matches, setMatches] = useState(buildDefaultMatches);
+      const [pronostics, setPronostics] = useState({});
+      const [bonusPronostics, setBonusPronostics] = useState({});
+      const [bonusResults, setBonusResults] = useState({});
+      const [jokers, setJokers] = useState({});
+      const [activeGroup, setActiveGroup] = useState("A");
+      const [activeParticipant, setActiveParticipant] = useState(null);
+      const saveTimer = useRef(null);
+
+      // Load from localStorage on mount
+      useEffect(() => {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const data = JSON.parse(raw);
+            if (data.participants) setParticipants(data.participants);
+            if (data.matches) setMatches(data.matches);
+            if (data.pronostics) setPronostics(data.pronostics);
+            if (data.bonusPronostics) setBonusPronostics(data.bonusPronostics);
+            if (data.bonusResults) setBonusResults(data.bonusResults);
+            if (data.jokers) setJokers(data.jokers);
+          }
+        } catch (e) {
+          // No saved data, use defaults
+        }
+        setLoaded(true);
+      }, []);
+
+      // Set default active participant
+      useEffect(() => {
+        if (participants.length > 0 && !activeParticipant) {
+          setActiveParticipant(participants[0].id);
+        }
+      }, [participants, activeParticipant]);
+
+      // Auto-save to localStorage with debounce
+      useEffect(() => {
+        if (!loaded) return;
+        if (saveTimer.current) clearTimeout(saveTimer.current);
+        saveTimer.current = setTimeout(() => {
+          try {
+            const data = JSON.stringify({ participants, matches, pronostics, bonusPronostics, bonusResults, jokers });
+            localStorage.setItem(STORAGE_KEY, data);
+            setSaveMsg("✓ Sauvegardé");
+            setTimeout(() => setSaveMsg(""), 2000);
+          } catch (e) {
+            setSaveMsg("⚠ Erreur sauvegarde");
+          }
+        }, 800);
+        return () => clearTimeout(saveTimer.current);
+      }, [participants, matches, pronostics, bonusPronostics, bonusResults, jokers, loaded]);
+
+      const addParticipant = () => {
+        if (!newParticipant.trim()) return;
+        const colors = ["#e63946","#2a9d8f","#f4a261","#457b9d","#a8dadc","#e9c46a","#264653","#f77f00"];
+        const newP = { id: Date.now(), name: newParticipant.trim(), color: colors[participants.length % colors.length] };
+        setParticipants(p => [...p, newP]);
+        setNewParticipant("");
+      };
+
+      const removeParticipant = (id) => {
+        setParticipants(p => p.filter(x => x.id !== id));
+      };
+
+      const setMatchResult = (matchId, side, val) => {
+        setMatches(ms => ms.map(m => m.id === matchId ? { ...m, result: { ...m.result, [side]: val } } : m));
+      };
+
+      const setProno = (pid, matchId, side, val) => {
+        setPronostics(p => ({ ...p, [pid]: { ...p[pid], [matchId]: { ...(p[pid]?.[matchId] || {}), [side]: val } } }));
+      };
+
+      const setBonus = (pid, bonusId, idx, val) => {
+        setBonusPronostics(p => ({ ...p, [pid]: { ...p[pid], [`${bonusId}_${idx}`]: val } }));
+      };
+
+      const setBonusResult = (bonusId, idx, val) => {
+        setBonusResults(p => ({ ...p, [`${bonusId}_${idx}`]: val }));
+      };
+
+      const toggleJoker = (pid, matchId) => {
+        setJokers(j => ({ ...j, [pid]: j[pid] === matchId ? null : matchId }));
+      };
+
+      const calcScore = (pid) => {
+        let total = 0, exactCount = 0;
+        matches.forEach(m => {
+          if (m.result.home === "" || m.result.away === "") return;
+          const pts = calcMatchPoints(pronostics[pid]?.[m.id], m.result);
+          const isJoker = jokers[pid] === m.id;
+          if (pts === 3) exactCount++;
+          total += isJoker ? pts * 2 : pts;
+        });
+        BONUS_TYPES.forEach(b => {
+          for (let i = 0; i < b.count; i++) {
+            const key = `${b.id}_${i}`;
+            const res = bonusResults[key];
+            const prono = bonusPronostics[pid]?.[key];
+            if (res && prono && res.toLowerCase().trim() === prono.toLowerCase().trim()) total += b.points;
+          }
+        });
+        return { total, exactCount };
+      };
+
+      const rankings = participants.map(p => ({ ...p, ...calcScore(p.id) })).sort((a, b) => b.total - a.total || b.exactCount - a.exactCount);
+      const groupMatches = matches.filter(m => m.group === activeGroup);
+
+      const C = {
+        bg: "#0a0e1a", card: "#111827", border: "#1e293b", accent: "#3b82f6",
+        gold: "#f59e0b", silver: "#94a3b8", bronze: "#cd7c2f",
+        text: "#f1f5f9", muted: "#64748b", green: "#22c55e", yellow: "#eab308",
+      };
+
+      const s = {
+        app: { minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "'Syne', sans-serif", paddingBottom: 40 },
+        header: { background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)", borderBottom: `1px solid ${C.border}`, padding: "20px 20px 0" },
+        title: { fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px", background: "linear-gradient(90deg, #60a5fa, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" },
+        sub: { color: "#f59e0b", fontSize: 11, fontWeight: 600, marginTop: 2, letterSpacing: 0.5 },
+        meta: { color: C.muted, fontSize: 12, marginBottom: 14, marginTop: 6 },
+        tabs: { display: "flex", gap: 4, marginTop: 4 },
+        tab: (a) => ({ padding: "10px 16px", background: a ? C.accent : "transparent", color: a ? "#fff" : C.muted, border: "none", borderRadius: "8px 8px 0 0", cursor: "pointer", fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: 13 }),
+        content: { maxWidth: 800, margin: "0 auto", padding: "16px 14px" },
+        card: { background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14, marginBottom: 10 },
+        input: { background: "#1e293b", border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, padding: "8px 12px", fontFamily: "'Syne', sans-serif", fontSize: 13, outline: "none", width: "100%" },
+        btn: (c = C.accent) => ({ background: c, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 13 }),
+        badge: (c) => ({ background: c + "22", color: c, border: `1px solid ${c}44`, borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 700 }),
+        scoreInput: { background: "#1e293b", border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, padding: "6px 0", fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, textAlign: "center", width: 44, outline: "none" },
+        groupBtn: (a) => ({ padding: "6px 11px", background: a ? C.accent : "#1e293b", color: a ? "#fff" : C.muted, border: `1px solid ${a ? C.accent : C.border}`, borderRadius: 8, cursor: "pointer", fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: 12 }),
+        pBtn: (a, c) => ({ padding: "6px 13px", background: a ? c : "#1e293b", color: a ? "#fff" : C.muted, border: `1px solid ${a ? c : C.border}`, borderRadius: 20, cursor: "pointer", fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: 12 }),
+        label: { color: C.muted, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "block" },
+      };
+
+      const medalColors = ["#f59e0b", "#94a3b8", "#cd7c2f"];
+      const medalIcons = ["🥇", "🥈", "🥉"];
+
+      if (!loaded) {
+        return (
+          <div style={{ ...s.app, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
+            <div style={{ fontSize: 40 }}>⚽</div>
+            <div style={{ color: C.muted, fontSize: 14 }}>Chargement...</div>
+          </div>
+        );
+      }
+
+      return (
+        <div style={s.app}>
+          <div style={s.header}>
+            <div style={{ maxWidth: 800, margin: "0 auto" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 2 }}>
+                <div style={{ flexShrink: 0 }}>
+                  <svg width="50" height="50" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="48" fill="#1e3a8a" stroke="#3b82f6" strokeWidth="2"/>
+                    <text x="50" y="36" textAnchor="middle" fill="white" fontSize="13" fontWeight="800" fontFamily="Syne,sans-serif">FIFA</text>
+                    <text x="50" y="54" textAnchor="middle" fill="#f59e0b" fontSize="18" fontWeight="800" fontFamily="Syne,sans-serif">2026</text>
+                    <text x="50" y="70" textAnchor="middle" fill="white" fontSize="9" fontFamily="Syne,sans-serif">🇺🇸🇨🇦🇲🇽</text>
+                    <path d="M20 78 Q50 90 80 78" stroke="#f59e0b" strokeWidth="2" fill="none"/>
+                  </svg>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={s.title}>🐐 Make Football Goat Again 🦅</div>
+                  <div style={s.sub}>La compét' d'Infantino, bénie par Trump, gagnée par les chèvres</div>
+                </div>
+                <div style={{ fontSize: 11, color: saveMsg ? C.green : C.muted, fontWeight: 600, flexShrink: 0, minWidth: 90, textAlign: "right" }}>
+                  {saveMsg || "💾 Local"}
+                </div>
+              </div>
+              <div style={s.meta}>{participants.length} participant{participants.length > 1 ? "s" : ""} · {matches.length} matchs · Règles officielles du groupe</div>
+              <div style={s.tabs}>
+                {TABS.map((t, i) => (
+                  <button key={i} style={s.tab(tab === i)} onClick={() => setTab(i)}>{t}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div style={s.content}>
+
+            {/* TAB 0 — PARTICIPANTS */}
+            {tab === 0 && (
+              <div>
+                <div style={{ ...s.card, marginBottom: 14 }}>
+                  <div style={s.label}>Ajouter un participant</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input style={{ ...s.input, flex: 1 }} placeholder="Prénom ou pseudo..."
+                      value={newParticipant} onChange={e => setNewParticipant(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && addParticipant()} />
+                    <button style={s.btn()} onClick={addParticipant}>+ Ajouter</button>
+                  </div>
+                </div>
+                {participants.map(p => (
+                  <div key={p.id} style={{ ...s.card, display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 12, height: 12, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
+                    <div style={{ flex: 1, fontWeight: 700, fontSize: 15 }}>{p.name}</div>
+                    <div style={s.badge(p.color)}>{calcScore(p.id).total} pts</div>
+                    <button style={{ ...s.btn("#ef4444"), padding: "4px 10px", fontSize: 12 }} onClick={() => removeParticipant(p.id)}>✕</button>
+                  </div>
+                ))}
+                <div style={{ ...s.card, marginTop: 20, background: "#0f172a", border: "1px solid #1e3a5f" }}>
+                  <div style={{ fontSize: 13, color: "#60a5fa", fontWeight: 700, marginBottom: 8 }}>📋 Règles du scoring</div>
+                  <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.9 }}>
+                    <div>🎯 <b style={{ color: C.text }}>Score exact</b> → 3 pts</div>
+                    <div>✅ <b style={{ color: C.text }}>Bon résultat</b> (V/N/D sans score exact) → 1 pt</div>
+                    <div>❌ <b style={{ color: C.text }}>Mauvais résultat</b> → 0 pt</div>
+                    <div>🃏 <b style={{ color: C.text }}>Match Joker</b> → points × 2 (1 joker par participant)</div>
+                    <div style={{ marginTop: 6, borderTop: `1px solid ${C.border}`, paddingTop: 6 }}>+ Bonus pronostics de début de tournoi (voir onglet Bonus)</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 1 — MATCHS */}
+            {tab === 1 && (
+              <div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+                  {GROUPS.map(g => (
+                    <button key={g.id} style={s.groupBtn(activeGroup === g.id)} onClick={() => setActiveGroup(g.id)}>Groupe {g.id}</button>
+                  ))}
+                </div>
+                <div style={{ marginBottom: 14 }}>
+                  <div style={s.label}>Pronostics de</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {participants.map(p => (
+                      <button key={p.id} style={s.pBtn(activeParticipant === p.id, p.color)} onClick={() => setActiveParticipant(p.id)}>{p.name}</button>
+                    ))}
+                  </div>
+                </div>
+                {groupMatches.map(m => {
+                  const prono = pronostics[activeParticipant]?.[m.id] || {};
+                  const pts = calcMatchPoints(prono, m.result);
+                  const hasResult = m.result.home !== "" && m.result.away !== "";
+                  const isJoker = jokers[activeParticipant] === m.id;
+                  const finalPts = isJoker ? pts * 2 : pts;
+                  const ptColor = pts === 3 ? C.green : pts === 1 ? C.yellow : hasResult ? "#ef4444" : C.muted;
+                  return (
+                    <div key={m.id} style={{ ...s.card, position: "relative" }}>
+                      {isJoker && <div style={{ position: "absolute", top: 8, right: 8, fontSize: 11, background: "#f59e0b22", color: "#f59e0b", border: "1px solid #f59e0b44", borderRadius: 6, padding: "2px 7px", fontWeight: 700 }}>🃏 JOKER ×2</div>}
+                      <div style={{ fontSize: 11, color: C.muted, marginBottom: 8, fontWeight: 600 }}>GROUPE {m.group}</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 8, alignItems: "center" }}>
+                        <div style={{ textAlign: "right", fontWeight: 700, fontSize: 13 }}>{getFlag(m.home)} {m.home}</div>
+                        <div style={{ textAlign: "center", color: C.muted, fontSize: 11, fontWeight: 700 }}>VS</div>
+                        <div style={{ fontWeight: 700, fontSize: 13 }}>{getFlag(m.away)} {m.away}</div>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
+                        <div style={{ background: "#0f172a", borderRadius: 8, padding: 10 }}>
+                          <div style={s.label}>Pronostic {participants.find(p => p.id === activeParticipant)?.name}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
+                            <input style={s.scoreInput} type="number" min="0" max="20" placeholder="–"
+                              value={prono.home ?? ""} onChange={e => setProno(activeParticipant, m.id, "home", e.target.value)} />
+                            <span style={{ color: C.muted, fontWeight: 700 }}>–</span>
+                            <input style={s.scoreInput} type="number" min="0" max="20" placeholder="–"
+                              value={prono.away ?? ""} onChange={e => setProno(activeParticipant, m.id, "away", e.target.value)} />
+                          </div>
+                        </div>
+                        <div style={{ background: "#0f172a", borderRadius: 8, padding: 10 }}>
+                          <div style={s.label}>Résultat réel</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
+                            <input style={s.scoreInput} type="number" min="0" max="20" placeholder="–"
+                              value={m.result.home} onChange={e => setMatchResult(m.id, "home", e.target.value)} />
+                            <span style={{ color: C.muted, fontWeight: 700 }}>–</span>
+                            <input style={s.scoreInput} type="number" min="0" max="20" placeholder="–"
+                              value={m.result.away} onChange={e => setMatchResult(m.id, "away", e.target.value)} />
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                        <button style={{ ...s.btn(isJoker ? "#f59e0b" : "#1e293b"), fontSize: 11, padding: "4px 10px", border: isJoker ? "none" : `1px solid ${C.border}` }}
+                          onClick={() => toggleJoker(activeParticipant, m.id)}>
+                          🃏 {isJoker ? "Retirer Joker" : "Joker"}
+                        </button>
+                        {hasResult && <div style={{ fontWeight: 800, fontSize: 14, color: ptColor }}>+{finalPts} pts {isJoker && pts > 0 ? `(${pts}×2)` : ""}</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* TAB 2 — BONUS */}
+            {tab === 2 && (
+              <div>
+                <div style={{ color: C.muted, fontSize: 13, marginBottom: 14 }}>
+                  Pronostics à rendre avant le coup d'envoi du tournoi. Saisissez les prédictions de chaque participant, puis entrez les vrais résultats quand ils sont connus.
+                </div>
+                {BONUS_TYPES.map(b => (
+                  <div key={b.id} style={s.card}>
+                    <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{b.label}</div>
+                    <div style={{ ...s.badge(C.gold), display: "inline-block", marginBottom: 12 }}>+{b.points} pts</div>
+                    {Array.from({ length: b.count }).map((_, i) => (
+                      <div key={i} style={{ marginBottom: b.count > 1 ? 12 : 0 }}>
+                        {b.count > 1 && <div style={{ ...s.label, marginBottom: 6 }}>#{i + 1}</div>}
+                        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+                          <div style={{ fontSize: 12, color: C.green, fontWeight: 700, width: 70, flexShrink: 0 }}>✅ Résultat</div>
+                          <input style={s.input} placeholder="Résultat réel..."
+                            value={bonusResults[`${b.id}_${i}`] || ""}
+                            onChange={e => setBonusResult(b.id, i, e.target.value)} />
+                        </div>
+                        {participants.map(p => {
+                          const key = `${b.id}_${i}`;
+                          const prono = bonusPronostics[p.id]?.[key] || "";
+                          const res = bonusResults[key];
+                          const correct = res && prono && res.toLowerCase().trim() === prono.toLowerCase().trim();
+                          return (
+                            <div key={p.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                              <div style={{ width: 8, height: 8, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
+                              <div style={{ fontSize: 12, fontWeight: 600, width: 70, flexShrink: 0, color: C.text }}>{p.name}</div>
+                              <input style={{ ...s.input, borderColor: correct ? C.green : C.border }}
+                                placeholder={`Pronostic de ${p.name}...`} value={prono}
+                                onChange={e => setBonus(p.id, b.id, i, e.target.value)} />
+                              {correct && <span style={{ color: C.green, fontWeight: 700, fontSize: 12, flexShrink: 0 }}>+{b.points}pts</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* TAB 3 — CLASSEMENT */}
+            {tab === 3 && (
+              <div>
+                <div style={{ ...s.card, background: "linear-gradient(135deg, #1e1b4b, #0f172a)", marginBottom: 16, textAlign: "center", padding: "20px 16px" }}>
+                  <div style={{ fontSize: 11, color: C.muted, fontWeight: 700, letterSpacing: 2, marginBottom: 4 }}>CLASSEMENT GÉNÉRAL</div>
+                  <div style={{ fontSize: 12, color: C.muted }}>Mis à jour en temps réel · sauvegardé dans ce navigateur</div>
+                </div>
+                {rankings.length === 0 && <div style={{ color: C.muted, textAlign: "center", padding: 40 }}>Aucun participant.</div>}
+                {rankings.map((p, i) => (
+                  <div key={p.id} style={{ ...s.card, display: "flex", alignItems: "center", gap: 14, background: i === 0 ? "linear-gradient(135deg, #1c1507, #1a0f00)" : C.card, border: `1px solid ${i === 0 ? "#f59e0b44" : C.border}` }}>
+                    <div style={{ fontSize: 26, width: 36, textAlign: "center" }}>{medalIcons[i] || `#${i + 1}`}</div>
+                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, fontSize: 15 }}>{p.name}</div>
+                      <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>🎯 {p.exactCount} score{p.exactCount > 1 ? "s" : ""} exact{p.exactCount > 1 ? "s" : ""}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 26, fontWeight: 800, color: medalColors[i] || C.text }}>{p.total}</div>
+                      <div style={{ fontSize: 11, color: C.muted }}>points</div>
+                    </div>
+                  </div>
+                ))}
+                {rankings.length > 1 && (
+                  <div style={{ ...s.card, marginTop: 16, background: "#0f172a" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.accent, marginBottom: 10 }}>📊 Détail par participant</div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ color: C.muted }}>
+                          <th style={{ textAlign: "left", padding: "4px 6px", fontWeight: 600 }}>Participant</th>
+                          <th style={{ textAlign: "center", padding: "4px 6px", fontWeight: 600 }}>Matchs joués</th>
+                          <th style={{ textAlign: "center", padding: "4px 6px", fontWeight: 600 }}>Exacts</th>
+                          <th style={{ textAlign: "center", padding: "4px 6px", fontWeight: 600 }}>Bonus</th>
+                          <th style={{ textAlign: "right", padding: "4px 6px", fontWeight: 600 }}>Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rankings.map((p, i) => {
+                          const matchPts = matches.reduce((acc, m) => {
+                            if (m.result.home === "" || m.result.away === "") return acc;
+                            const pts = calcMatchPoints(pronostics[p.id]?.[m.id], m.result);
+                            return acc + (jokers[p.id] === m.id ? pts * 2 : pts);
+                          }, 0);
+                          const bonusPts = p.total - matchPts;
+                          const matchesPlayed = matches.filter(m => m.result.home !== "" && m.result.away !== "").length;
+                          return (
+                            <tr key={p.id} style={{ borderTop: `1px solid ${C.border}` }}>
+                              <td style={{ padding: "7px 6px", fontWeight: 700 }}>
+                                <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: p.color, marginRight: 6 }} />
+                                {p.name}
+                              </td>
+                              <td style={{ textAlign: "center", padding: "7px 6px", color: C.muted }}>{matchesPlayed}</td>
+                              <td style={{ textAlign: "center", padding: "7px 6px", color: C.green }}>{p.exactCount}</td>
+                              <td style={{ textAlign: "center", padding: "7px 6px", color: C.gold }}>{bonusPts > 0 ? `+${bonusPts}` : "–"}</td>
+                              <td style={{ textAlign: "right", padding: "7px 6px", fontWeight: 800, color: medalColors[i] || C.text }}>{p.total}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
