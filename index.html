@@ -851,10 +851,14 @@
             <div v-for="(f, i) in MELTING_POT_FLAGS" :key="i" class="flag-tile"
               :style="{ left: f.x, top: f.y, width: f.w + 'px', height: f.h + 'px', background: FLAG_COLORS[f.c] || '#475569', transform: 'rotate(' + f.r + 'deg)' }"></div>
           </div>
-          <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 32px 28px; background: rgba(10,14,26,0.65); border: 1px solid rgba(245,158,11,0.3); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.5)">
+          <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 32px 28px; background: rgba(10,14,26,0.65); border: 1px solid rgba(245,158,11,0.3); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.5); max-width: 340px; text-align: center">
             <div style="font-size: 44px; line-height: 1">⚽</div>
             <div class="anton" style="font-size: 18px; color: #fbbf24; letter-spacing: 2px">WORLD CUP 2026</div>
-            <div :style="{ color: '#cbd5e1', fontSize: '13px' }">Connexion à la compétition…</div>
+            <div v-if="!authError" :style="{ color: '#cbd5e1', fontSize: '13px' }">Connexion à la compétition…</div>
+            <template v-if="authError">
+              <div :style="{ background: '#ef444418', border: '1px solid #ef444433', borderRadius: '8px', padding: '10px 14px', color: '#ef4444', fontSize: '13px', lineHeight: 1.5 }">{{ authError }}</div>
+              <button @click="doLogout" style="background: #1e293b; color: #94a3b8; border: 1px solid #334155; border-radius: 8px; padding: 8px 20px; cursor: pointer; font-family: Syne, sans-serif; font-size: 13px; font-weight: 600">Se déconnecter</button>
+            </template>
           </div>
         </div>
 
