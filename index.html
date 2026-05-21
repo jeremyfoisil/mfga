@@ -642,11 +642,17 @@
             if (authPassword.value.length < 6) throw new Error("Le mot de passe doit faire au moins 6 caractères");
             const { data, error } = await sb.auth.signUp({ email: username + "@mfga.app", password: authPassword.value });
             if (error) {
-              if (error.message.includes("already registered") || error.message.includes("already exists")) throw new Error("Ce nom d'utilisateur est déjà pris");
+              if (error.message.includes("already registered") || error.message.includes("already exists")) {
+                authMode.value = "login";
+                throw new Error("Ce nom existe déjà — connecte-toi avec ton mot de passe.");
+              }
               if (error.message.includes("rate limit")) throw new Error("Trop de tentatives, réessayez dans quelques minutes");
               throw error;
             }
-            if (data.user && !data.session) throw new Error("Confirmez votre email avant de vous connecter");
+            if (data.user && !data.session) {
+              authMode.value = "login";
+              throw new Error("Compte créé — connecte-toi avec ton mot de passe.");
+            }
           } catch (e) { authError.value = e.message; } finally { authLoading.value = false; }
         }
 
