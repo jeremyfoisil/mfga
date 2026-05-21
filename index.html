@@ -268,6 +268,7 @@
 
     const SUPABASE_URL  = "https://sazupuqxwrnvgzsdxkjg.supabase.co";
     const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhenVwdXF4d3Judmd6c2R4a2pnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNzc1MTEsImV4cCI6MjA5NDg1MzUxMX0.j2vQhrzFDDoaMV9i6CDIvF_9vpenDSFZ5julcjfXIBE";
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
     const CONFETTI_BITS = [
       { left: "8%",  delay: "0s",   dur: "3.2s", color: "#dc2626" },
@@ -495,7 +496,6 @@
         const activeGroup       = ref("A");
         const activeParticipant = ref(null);
 
-        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
         const writeTimers = {};
         let realtimeChannel = null;
 
@@ -759,12 +759,22 @@
         }
 
         // ── Session listener ──────────────────────────────────────────────────
-        onMounted(() => {
+        onMounted(async () => {
+          // Explicit session check — does not rely on INITIAL_SESSION timing
+          const { data: { session: existing } } = await sb.auth.getSession();
+          if (existing) {
+            session.value = existing;
+            await loadData(existing.user.id);
+          }
+
           sb.auth.onAuthStateChange(async (event, newSession) => {
-            session.value = newSession;
-            if (newSession && !loaded.value) {
-              await loadData(newSession.user.id);
+            if (event === "SIGNED_IN") {
+              session.value = newSession;
+              if (!loaded.value) await loadData(newSession.user.id);
+            } else if (event === "TOKEN_REFRESHED") {
+              session.value = newSession;
             } else if (event === "SIGNED_OUT") {
+              session.value = null;
               loaded.value = false;
             }
           });
