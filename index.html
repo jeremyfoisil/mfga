@@ -123,6 +123,14 @@
     .score-led:focus { border-color: #fbbf24 !important; box-shadow: inset 0 2px 8px rgba(0,0,0,0.6), 0 0 0 2px rgba(251,191,36,0.4); }
     .score-led::placeholder { color: #475569; }
 
+    .score-led-ro {
+      background: #0a0e1a; border: 2px solid #1e293b;
+      font-family: 'Anton', monospace; font-size: 28px;
+      width: 58px; height: 58px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
+    }
+
     .vs-chunk {
       font-family: 'Anton', sans-serif; font-size: 22px; letter-spacing: 1px;
       background: linear-gradient(180deg, #dc2626 50%, #1e3a8a 50%);
@@ -298,9 +306,15 @@
       GROUPS.forEach(g => {
         for (let i = 0; i < 4; i++)
           for (let j = i + 1; j < 4; j++)
-            ms.push({ id: id++, group: g.id, home: g.teams[i], away: g.teams[j], result: { home: "", away: "" } });
+            ms.push({ id: id++, group: g.id, home: g.teams[i], away: g.teams[j], result: { home: "", away: "" }, matchDate: "", matchTime: "", venue: "", round: "" });
       });
       return ms;
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return "";
+      const d = new Date(dateStr + "T12:00:00Z");
+      return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
     }
 
     createApp({
@@ -424,15 +438,6 @@
         }
 
         // ── Data actions ──────────────────────────────────────────────────────
-        function setMatchResult(matchId, side, val) {
-          matches.value = matches.value.map(m => m.id !== matchId ? m : { ...m, result: { ...m.result, [side]: val } });
-          debounce("mr_" + matchId, async () => {
-            const m = matches.value.find(x => x.id === matchId);
-            if (!m) return;
-            await sb.from("match_results").upsert({ match_id: matchId, result_home: m.result.home === "" ? null : parseInt(m.result.home), result_away: m.result.away === "" ? null : parseInt(m.result.away) }, { onConflict: "match_id" });
-          });
-        }
-
         function setProno(pid, matchId, side, val) {
           if (!isMe(pid)) return;
           const cur = pronostics.value;
@@ -521,9 +526,9 @@
           if (!prof) { authError.value = "Profil introuvable. Contactez l'administrateur."; return; }
           profile.value = prof;
 
-          const [{ data: pData }, { data: mrData }, { data: prData }, { data: brData }, { data: bpData }] = await Promise.all([
+          const [{ data: pData }, { data: mData }, { data: prData }, { data: brData }, { data: bpData }] = await Promise.all([
             sb.from("participants").select("*").order("id"),
-            sb.from("match_results").select("*"),
+            sb.from("matches").select("*"),
             sb.from("pronostics").select("*"),
             sb.from("bonus_results").select("*"),
             sb.from("bonus_pronostics").select("*"),
@@ -532,9 +537,15 @@
           participants.value = (pData || []).map(p => ({ id: p.id, name: p.name, color: p.color }));
           activeParticipant.value = prof.participant_id;
 
-          const resultMap = {};
-          (mrData || []).forEach(r => { resultMap[r.match_id] = { home: r.result_home !== null ? String(r.result_home) : "", away: r.result_away !== null ? String(r.result_away) : "" }; });
-          matches.value = buildDefaultMatches().map(m => ({ ...m, result: resultMap[m.id] || { home: "", away: "" } }));
+          const matchesMap = {};
+          (mData || []).forEach(r => { matchesMap[r.id] = r; });
+          matches.value = buildDefaultMatches().map(m => {
+            const md = matchesMap[m.id] || {};
+            return { ...m,
+              result: { home: md.score_home !== null && md.score_home !== undefined ? String(md.score_home) : "", away: md.score_away !== null && md.score_away !== undefined ? String(md.score_away) : "" },
+              matchDate: md.match_date || "", matchTime: md.match_time || "", venue: md.venue || "", round: md.round || "",
+            };
+          });
 
           const pronos = {}, jkrs = {};
           (prData || []).forEach(p => {
@@ -562,9 +573,12 @@
               if (eventType === "INSERT") participants.value = participants.value.find(x => x.id === n.id) ? participants.value : [...participants.value, { id: n.id, name: n.name, color: n.color }];
               else if (eventType === "DELETE") participants.value = participants.value.filter(x => x.id !== o.id);
             })
-            .on("postgres_changes", { event: "*", schema: "public", table: "match_results" }, ({ eventType, new: r }) => {
+            .on("postgres_changes", { event: "*", schema: "public", table: "matches" }, ({ eventType, new: r }) => {
               if (eventType === "INSERT" || eventType === "UPDATE")
-                matches.value = matches.value.map(m => m.id === r.match_id ? { ...m, result: { home: r.result_home !== null ? String(r.result_home) : "", away: r.result_away !== null ? String(r.result_away) : "" } } : m);
+                matches.value = matches.value.map(m => m.id === r.id ? { ...m,
+                  result: { home: r.score_home !== null && r.score_home !== undefined ? String(r.score_home) : "", away: r.score_away !== null && r.score_away !== undefined ? String(r.score_away) : "" },
+                  matchDate: r.match_date || m.matchDate, matchTime: r.match_time || m.matchTime, venue: r.venue || m.venue, round: r.round || m.round,
+                } : m);
             })
             .on("postgres_changes", { event: "*", schema: "public", table: "pronostics" }, ({ eventType, new: p }) => {
               if (eventType === "INSERT" || eventType === "UPDATE") {
@@ -605,10 +619,10 @@
           rtColor, groupMatches, rankings,
           sCard, sInput, sLabel,
           tabStyle, btnStyle, badgeStyle,
-          getFlag, calcScore, setMatchResult, setProno, setBonus, setBonusResult, toggleJoker,
+          getFlag, calcScore, setProno, setBonus, setBonusResult, toggleJoker,
           getProno, isJokerMatch, getMatchPts, ptColor, getBonusProno,
           isBonusCorrect, isBonusWrong, matchPtsForRanking, matchesPlayedCount, activeParticipantName, activeParticipantColor,
-          getBonusIcon, initials, CONFETTI_BITS, BONUS_ICONS,
+          getBonusIcon, initials, CONFETTI_BITS, BONUS_ICONS, formatDate,
         };
       },
 
@@ -835,8 +849,16 @@
                     <span class="anton" style="font-size: 11px; color: #fbbf24; letter-spacing: 1.5px">GROUPE {{ m.group }}</span>
                     <span :style="{ color: C.muted, fontSize: '10px' }">·</span>
                     <span :style="{ color: C.muted, fontSize: '10px', letterSpacing: '1px' }">MATCH {{ idx + 1 }}/6</span>
+                    <template v-if="m.matchDate">
+                      <span :style="{ color: C.muted, fontSize: '10px' }">·</span>
+                      <span :style="{ color: '#94a3b8', fontSize: '10px' }">📅 {{ formatDate(m.matchDate) }}</span>
+                      <span v-if="m.matchTime" :style="{ color: '#64748b', fontSize: '10px' }">{{ m.matchTime }}</span>
+                    </template>
                   </div>
-                  <div v-if="isJokerMatch(activeParticipant, m.id)" style="font-size: 10px; background: linear-gradient(90deg, #f59e0b, #d97706); color: #0a0e1a; border-radius: 4px; padding: 3px 8px; font-weight: 800; font-family: Anton, sans-serif; letter-spacing: 1px">🃏 JOKER ×2</div>
+                  <div style="display: flex; align-items: center; gap: 8px">
+                    <span v-if="m.venue" :style="{ color: '#475569', fontSize: '10px' }">📍 {{ m.venue }}</span>
+                    <div v-if="isJokerMatch(activeParticipant, m.id)" style="font-size: 10px; background: linear-gradient(90deg, #f59e0b, #d97706); color: #0a0e1a; border-radius: 4px; padding: 3px 8px; font-weight: 800; font-family: Anton, sans-serif; letter-spacing: 1px">🃏 JOKER ×2</div>
+                  </div>
                 </div>
 
                 <!-- Teams + score inputs -->
@@ -876,7 +898,7 @@
                           @input="setProno(activeParticipant, m.id, 'away', $event.target.value)" />
                       </div>
                     </div>
-                    <!-- Result panel -->
+                    <!-- Result panel (read-only) -->
                     <div :style="{ background: '#0a0e1a', borderRadius: '10px', padding: '10px 8px', border: '1px solid ' + (m.result.home !== '' && m.result.away !== '' ? '#22c55e44' : C.border), position: 'relative' }">
                       <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px">
                         <span :class="m.result.home !== '' && m.result.away !== '' ? 'live-dot' : ''"
@@ -884,13 +906,9 @@
                         <span :style="{ fontSize: '9px', color: m.result.home !== '' && m.result.away !== '' ? '#22c55e' : '#475569', fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase' }">Résultat final</span>
                       </div>
                       <div style="display: flex; align-items: center; gap: 6px; justify-content: center">
-                        <input class="score-led" type="number" min="0" max="20" placeholder="–"
-                          :value="m.result.home"
-                          @input="setMatchResult(m.id, 'home', $event.target.value)" />
+                        <div class="score-led-ro" :style="{ color: m.result.home !== '' ? '#fbbf24' : '#334155' }">{{ m.result.home !== '' ? m.result.home : '–' }}</div>
                         <span style="color: #475569; font-weight: 700; font-size: 22px; font-family: Anton, sans-serif">:</span>
-                        <input class="score-led" type="number" min="0" max="20" placeholder="–"
-                          :value="m.result.away"
-                          @input="setMatchResult(m.id, 'away', $event.target.value)" />
+                        <div class="score-led-ro" :style="{ color: m.result.away !== '' ? '#fbbf24' : '#334155' }">{{ m.result.away !== '' ? m.result.away : '–' }}</div>
                       </div>
                     </div>
                   </div>
