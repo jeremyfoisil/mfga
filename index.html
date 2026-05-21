@@ -460,7 +460,7 @@
       GROUPS.forEach(g => {
         for (let i = 0; i < 4; i++)
           for (let j = i + 1; j < 4; j++)
-            ms.push({ id: id++, group: g.id, home: g.teams[i], away: g.teams[j], result: { home: "", away: "" }, matchDate: "", matchTime: "", venue: "", round: "" });
+            ms.push({ id: id++, group: g.id, home: g.teams[i], away: g.teams[j], result: { home: "", away: "", goalsHome: [], goalsAway: [], goalsHomeText: "", goalsAwayText: "" }, matchDate: "", matchTime: "", venue: "", round: "" });
       });
       return ms;
     }
@@ -469,6 +469,29 @@
       if (!dateStr) return "";
       const d = new Date(dateStr + "T12:00:00Z");
       return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+    }
+
+    function parseGoals(text) {
+      if (!text || !text.trim()) return [];
+      return text.trim().split('\n').filter(l => l.trim()).map(line => {
+        const parts = line.split(',').map(s => s.trim());
+        const name = parts[0] || '';
+        const minute = parseInt(parts[1]) || 0;
+        const rest = parts.slice(2).join(' ').toLowerCase();
+        const g = { name, minute };
+        if (rest.includes('pen')) g.penalty = true;
+        if (rest.includes('csc') || rest.includes('og')) g.owngoal = true;
+        return g;
+      }).filter(g => g.name && g.minute);
+    }
+
+    function goalsToText(goals) {
+      return (goals || []).map(g => {
+        const parts = [g.name, g.minute];
+        if (g.penalty) parts.push('pen');
+        if (g.owngoal) parts.push('csc');
+        return parts.join(', ');
+      }).join('\n');
     }
 
     createApp({
@@ -611,7 +634,7 @@
           debounce("mr_" + matchId, async () => {
             const m = matches.value.find(x => x.id === matchId);
             if (!m) return;
-            await sb.from("match_results").upsert({ match_id: matchId, result_home: m.result.home === "" ? null : parseInt(m.result.home), result_away: m.result.away === "" ? null : parseInt(m.result.away) }, { onConflict: "match_id" });
+            await sb.from("match_results").upsert({ match_id: matchId, result_home: m.result.home === "" ? null : parseInt(m.result.home), result_away: m.result.away === "" ? null : parseInt(m.result.away), goals_home: m.result.goalsHome || [], goals_away: m.result.goalsAway || [] }, { onConflict: "match_id" });
             // Update score for all participants
             if (m.result.home !== "" && m.result.away !== "") {
               const updates = participants.value.map(p => {
@@ -623,6 +646,20 @@
               }).filter(Boolean);
               await Promise.all(updates);
             }
+          });
+        }
+
+        function setMatchGoalText(matchId, side, text) {
+          const goals = parseGoals(text);
+          const key = side === 'home' ? 'goalsHome' : 'goalsAway';
+          const textKey = side === 'home' ? 'goalsHomeText' : 'goalsAwayText';
+          matches.value = matches.value.map(m => m.id !== matchId ? m : {
+            ...m, result: { ...m.result, [key]: goals, [textKey]: text }
+          });
+          debounce("mg_" + matchId, async () => {
+            const m = matches.value.find(x => x.id === matchId);
+            if (!m) return;
+            await sb.from("match_results").upsert({ match_id: matchId, result_home: m.result.home === "" ? null : parseInt(m.result.home), result_away: m.result.away === "" ? null : parseInt(m.result.away), goals_home: m.result.goalsHome || [], goals_away: m.result.goalsAway || [] }, { onConflict: "match_id" });
           });
         }
 
@@ -736,11 +773,14 @@
           const matchesMap = {};
           (mData || []).forEach(r => { matchesMap[r.id] = r; });
           const resultMap = {};
-          (mrData || []).forEach(r => { resultMap[r.match_id] = { home: r.result_home !== null ? String(r.result_home) : "", away: r.result_away !== null ? String(r.result_away) : "" }; });
+          (mrData || []).forEach(r => {
+            const gh = r.goals_home || [], ga = r.goals_away || [];
+            resultMap[r.match_id] = { home: r.result_home !== null ? String(r.result_home) : "", away: r.result_away !== null ? String(r.result_away) : "", goalsHome: gh, goalsAway: ga, goalsHomeText: goalsToText(gh), goalsAwayText: goalsToText(ga) };
+          });
           matches.value = buildDefaultMatches().map(m => {
             const md = matchesMap[m.id] || {};
             return { ...m,
-              result: resultMap[m.id] || { home: "", away: "" },
+              result: resultMap[m.id] || { home: "", away: "", goalsHome: [], goalsAway: [], goalsHomeText: "", goalsAwayText: "" },
               matchDate: md.match_date || "", matchTime: md.match_time || "", venue: md.venue || "", round: md.round || "",
             };
           });
@@ -772,10 +812,12 @@
               else if (eventType === "DELETE") participants.value = participants.value.filter(x => x.id !== o.id);
             })
             .on("postgres_changes", { event: "*", schema: "public", table: "match_results" }, ({ eventType, new: r }) => {
-              if (eventType === "INSERT" || eventType === "UPDATE")
+              if (eventType === "INSERT" || eventType === "UPDATE") {
+                const gh = r.goals_home || [], ga = r.goals_away || [];
                 matches.value = matches.value.map(m => m.id === r.match_id ? { ...m,
-                  result: { home: r.result_home !== null ? String(r.result_home) : "", away: r.result_away !== null ? String(r.result_away) : "" }
+                  result: { home: r.result_home !== null ? String(r.result_home) : "", away: r.result_away !== null ? String(r.result_away) : "", goalsHome: gh, goalsAway: ga, goalsHomeText: goalsToText(gh), goalsAwayText: goalsToText(ga) }
                 } : m);
+              }
             })
             .on("postgres_changes", { event: "*", schema: "public", table: "pronostics" }, ({ eventType, new: p }) => {
               if (eventType === "INSERT" || eventType === "UPDATE") {
@@ -831,7 +873,7 @@
           rtColor, groupMatches, rankings,
           sCard, sInput, sLabel,
           tabStyle, btnStyle, badgeStyle,
-          getFlag, calcScore, setMatchResult, setProno, setBonus, setBonusResult, toggleJoker,
+          getFlag, calcScore, setMatchResult, setMatchGoalText, setProno, setBonus, setBonusResult, toggleJoker,
           getProno, isJokerMatch, getMatchPts, ptColor, getBonusProno,
           isBonusCorrect, isBonusWrong, matchPtsForRanking, matchesPlayedCount, activeParticipantName, activeParticipantColor,
           getBonusIcon, initials, CONFETTI_BITS, BONUS_ICONS, formatDate,
@@ -1167,6 +1209,47 @@
                         </template>
                       </div>
                     </div>
+                  </div>
+
+                  <!-- Goals section -->
+                  <div v-if="m.result.goalsHome.length || m.result.goalsAway.length || canEditResult" style="margin-top: 10px">
+                    <div v-if="m.result.goalsHome.length || m.result.goalsAway.length"
+                      :style="{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', paddingBottom: canEditResult ? '8px' : '0', marginBottom: canEditResult ? '8px' : '0', borderBottom: canEditResult ? '1px dashed #1e293b' : 'none' }">
+                      <div style="text-align: right">
+                        <div v-for="g in [...m.result.goalsHome].sort((a,b) => a.minute - b.minute)" :key="g.name + g.minute"
+                          style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
+                          {{ g.name }}<span v-if="g.owngoal" style="color: #ef4444"> (csc)</span><span v-if="g.penalty" style="color: #f59e0b"> ⚽(p)</span><span v-else> ⚽</span> <span style="color: #64748b">{{ g.minute }}'</span>
+                        </div>
+                      </div>
+                      <div>
+                        <div v-for="g in [...m.result.goalsAway].sort((a,b) => a.minute - b.minute)" :key="g.name + g.minute"
+                          style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
+                          <span style="color: #64748b">{{ g.minute }}'</span><span v-if="g.penalty" style="color: #f59e0b"> ⚽(p)</span><span v-else> ⚽</span><span v-if="g.owngoal" style="color: #ef4444"> (csc)</span> {{ g.name }}
+                        </div>
+                      </div>
+                    </div>
+                    <template v-if="canEditResult">
+                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px">
+                        <div>
+                          <div style="font-size: 9px; color: #64748b; margin-bottom: 2px; text-align: right">← Buteurs dom. (Nom, min [, pen/csc])</div>
+                          <textarea
+                            :style="{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '4px', color: '#94a3b8', fontSize: '10px', width: '100%', padding: '4px 6px', fontFamily: 'Syne, sans-serif', resize: 'vertical', minHeight: '40px', outline: 'none', lineHeight: '1.5' }"
+                            placeholder='Messi, 10, pen
+Alvarez, 39'
+                            :value="m.result.goalsHomeText"
+                            @input="setMatchGoalText(m.id, 'home', $event.target.value)"></textarea>
+                        </div>
+                        <div>
+                          <div style="font-size: 9px; color: #64748b; margin-bottom: 2px">Buteurs ext. → (Nom, min [, pen/csc])</div>
+                          <textarea
+                            :style="{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '4px', color: '#94a3b8', fontSize: '10px', width: '100%', padding: '4px 6px', fontFamily: 'Syne, sans-serif', resize: 'vertical', minHeight: '40px', outline: 'none', lineHeight: '1.5' }"
+                            placeholder='Mbappe, 80, pen
+Giroud, 45'
+                            :value="m.result.goalsAwayText"
+                            @input="setMatchGoalText(m.id, 'away', $event.target.value)"></textarea>
+                        </div>
+                      </div>
+                    </template>
                   </div>
 
                   <!-- Footer: joker + result pts -->
