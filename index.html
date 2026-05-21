@@ -6,7 +6,7 @@
   <title>Make Football Goat Again 🐐</title>
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Anton&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #0a0e1a; }
@@ -16,6 +16,186 @@
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #0a0e1a; }
     ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+
+    .anton { font-family: 'Anton', 'Syne', sans-serif; letter-spacing: 0.5px; }
+
+    .hero-wrap {
+      position: relative; overflow: hidden;
+      background:
+        radial-gradient(circle at 18% 0%, rgba(220,38,38,0.20), transparent 55%),
+        radial-gradient(circle at 82% 100%, rgba(37,99,235,0.24), transparent 55%),
+        linear-gradient(135deg, #0a0e1a 0%, #0f1530 60%, #1a0f1f 100%);
+    }
+    .hero-stars {
+      position: absolute; inset: 0; pointer-events: none;
+      background-image:
+        radial-gradient(circle at 8% 18%, rgba(255,255,255,0.55) 0 1.5px, transparent 2px),
+        radial-gradient(circle at 22% 60%, rgba(255,255,255,0.4) 0 1px, transparent 1.6px),
+        radial-gradient(circle at 38% 28%, rgba(255,255,255,0.55) 0 1.5px, transparent 2px),
+        radial-gradient(circle at 55% 75%, rgba(255,255,255,0.35) 0 1px, transparent 1.6px),
+        radial-gradient(circle at 72% 22%, rgba(255,255,255,0.6) 0 2px, transparent 2.6px),
+        radial-gradient(circle at 88% 58%, rgba(255,255,255,0.45) 0 1.5px, transparent 2px),
+        radial-gradient(circle at 92% 12%, rgba(255,255,255,0.4) 0 1px, transparent 1.6px),
+        radial-gradient(circle at 12% 88%, rgba(255,255,255,0.3) 0 1px, transparent 1.6px);
+    }
+    .hero-stripes {
+      position: absolute; right: -50px; top: -30px;
+      width: 220px; height: 220px; opacity: 0.10; transform: rotate(18deg);
+      background: repeating-linear-gradient(0deg, #dc2626 0 12px, transparent 12px 24px);
+      pointer-events: none;
+    }
+
+    @keyframes confetti-fall {
+      0%   { transform: translateY(-12px) rotate(0deg);   opacity: 0; }
+      10%  { opacity: 1; }
+      100% { transform: translateY(200px) rotate(720deg); opacity: 0; }
+    }
+    .confetti-bit {
+      position: absolute; width: 6px; height: 10px; border-radius: 1px;
+      animation: confetti-fall linear infinite; pointer-events: none;
+    }
+
+    @keyframes ball-spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    .ball-spin { animation: ball-spin 8s linear infinite; transform-origin: center; transform-box: fill-box; }
+
+    .title-mfga {
+      font-family: 'Anton', sans-serif;
+      font-size: 30px; line-height: 0.95; letter-spacing: 1px; color: #f8fafc;
+      text-shadow:
+        0 1px 0 #1e3a8a, 0 2px 0 #1e3a8a, 0 3px 0 #1e3a8a,
+        0 4px 0 #991b1b, 0 5px 0 #991b1b, 0 6px 8px rgba(0,0,0,0.6);
+    }
+    .title-red  { color: #fca5a5; }
+    .title-blue { color: #93c5fd; }
+
+    .wc-mark {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #f8fafc; color: #0a0e1a;
+      padding: 5px 10px 4px; border-radius: 4px;
+      font-family: 'Anton', sans-serif; font-size: 12px; letter-spacing: 1.8px;
+      box-shadow: 2px 2px 0 #dc2626, 4px 4px 0 #1e3a8a;
+    }
+    .wc-mark .dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
+
+    .flag-strip {
+      height: 5px;
+      background: linear-gradient(90deg,
+        #1e3a8a 0%, #1e3a8a 30%, #f8fafc 30%, #f8fafc 35%,
+        #dc2626 35%, #dc2626 42%, #f8fafc 42%, #f8fafc 49%,
+        #dc2626 49%, #dc2626 56%, #f8fafc 56%, #f8fafc 63%,
+        #dc2626 63%, #dc2626 70%, #f8fafc 70%, #f8fafc 77%,
+        #dc2626 77%, #dc2626 84%, #f8fafc 84%, #f8fafc 91%,
+        #dc2626 91%, #dc2626 100%);
+    }
+
+    .us-corner {
+      position: absolute; top: 0; left: 0; width: 36px; height: 36px;
+      background: repeating-linear-gradient(0deg, #dc2626 0 3px, #f8fafc 3px 6px);
+      clip-path: polygon(0 0, 100% 0, 0 100%);
+      opacity: 0.45; pointer-events: none;
+    }
+    .card-rel { position: relative; overflow: hidden; }
+
+    .ribbon {
+      display: inline-block; padding: 3px 10px 3px 8px;
+      background: linear-gradient(180deg, #dc2626, #991b1b);
+      color: #fff; font-family: 'Anton', sans-serif; font-size: 11px; letter-spacing: 1.8px;
+      clip-path: polygon(0 0, 100% 0, 95% 50%, 100% 100%, 0 100%);
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.7); }
+      70%      { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+    }
+    .live-dot { animation: pulse-dot 1.8s infinite; }
+
+    .score-led {
+      background: #0a0e1a !important; border: 2px solid #1e3a8a !important;
+      color: #fbbf24 !important; font-family: 'Anton', monospace !important;
+      font-size: 28px !important; width: 58px !important; height: 58px !important;
+      text-align: center !important; border-radius: 6px !important;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.6), 0 0 0 1px rgba(251,191,36,0.15);
+      outline: none !important; padding: 0 !important;
+    }
+    .score-led:focus { border-color: #fbbf24 !important; box-shadow: inset 0 2px 8px rgba(0,0,0,0.6), 0 0 0 2px rgba(251,191,36,0.4); }
+    .score-led::placeholder { color: #475569; }
+
+    .vs-chunk {
+      font-family: 'Anton', sans-serif; font-size: 22px; letter-spacing: 1px;
+      background: linear-gradient(180deg, #dc2626 50%, #1e3a8a 50%);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+      padding: 0 6px;
+    }
+
+    .team-block {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(15,23,42,0.6); border: 1px solid #1e293b;
+      border-radius: 8px; padding: 8px 10px; min-width: 0;
+    }
+    .team-block .flag { font-size: 22px; flex-shrink: 0; }
+    .team-block .name { font-family: 'Anton', sans-serif; font-size: 14px; letter-spacing: 0.5px; color: #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .scoreboard-strip {
+      background: repeating-linear-gradient(90deg, #dc2626 0 18px, #1e3a8a 18px 36px, #f8fafc 36px 54px);
+      height: 4px; border-radius: 4px 4px 0 0; opacity: 0.85;
+    }
+
+    .group-pill {
+      font-family: 'Anton', sans-serif; letter-spacing: 1.5px;
+      padding: 8px 12px; border-radius: 999px; cursor: pointer;
+      font-size: 13px; border: 2px solid transparent; transition: transform 0.1s;
+    }
+    .group-pill:hover { transform: translateY(-1px); }
+
+    .avatar-disc {
+      width: 38px; height: 38px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Anton', sans-serif; font-size: 16px; color: #fff;
+      border: 2px solid rgba(255,255,255,0.2);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4), inset 0 -3px 0 rgba(0,0,0,0.2);
+      flex-shrink: 0; position: relative;
+    }
+    .avatar-disc.star::after {
+      content: "★"; position: absolute; bottom: -4px; right: -4px;
+      width: 14px; height: 14px; background: #fbbf24; color: #0a0e1a;
+      border-radius: 50%; font-size: 9px; line-height: 14px; text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+
+    .rule-chip {
+      background: rgba(15,23,42,0.7); border: 1px solid #1e293b;
+      border-radius: 10px; padding: 10px 12px;
+      display: flex; align-items: center; gap: 10px;
+      position: relative; overflow: hidden;
+    }
+    .rule-chip .num { font-family: 'Anton', sans-serif; font-size: 24px; line-height: 1; flex-shrink: 0; width: 36px; text-align: center; }
+    .rule-chip .lbl { font-size: 12px; color: #cbd5e1; font-weight: 600; }
+    .rule-chip .sub { font-size: 10px; color: #64748b; margin-top: 2px; }
+
+    .podium { display: grid; grid-template-columns: 1fr 1.1fr 1fr; gap: 8px; align-items: end; margin-bottom: 20px; }
+    .podium-step {
+      background: linear-gradient(180deg, #1e293b, #0f172a); border: 1px solid #334155;
+      border-radius: 10px 10px 0 0; padding: 14px 8px 12px; text-align: center; position: relative;
+    }
+    .podium-step.gold   { background: linear-gradient(180deg, #78350f, #451a03); border-color: #f59e0b; box-shadow: 0 -4px 20px rgba(245,158,11,0.25); }
+    .podium-step.silver { background: linear-gradient(180deg, #475569, #1e293b); border-color: #94a3b8; }
+    .podium-step.bronze { background: linear-gradient(180deg, #7c2d12, #431407); border-color: #cd7c2f; }
+    .podium-step .medal { font-size: 30px; margin-bottom: 4px; line-height: 1; }
+    .podium-step .p-name { font-family: 'Anton', sans-serif; font-size: 14px; letter-spacing: 0.5px; color: #fff; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .podium-step .pts  { font-family: 'Anton', sans-serif; font-size: 24px; line-height: 1; }
+    .podium-step .lbl  { font-size: 9px; letter-spacing: 1.5px; color: rgba(255,255,255,0.55); text-transform: uppercase; }
+    .podium-base {
+      font-family: 'Anton', sans-serif; font-size: 18px; color: #fff;
+      background: linear-gradient(180deg, #0f172a, #020617);
+      padding: 6px 0; border-radius: 0 0 6px 6px;
+      border: 1px solid #1e293b; border-top: none; text-align: center;
+    }
+
+    .bonus-header { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin: 0 0 14px; border-radius: 10px 10px 0 0; }
+    .bonus-icon-box { width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
   </style>
 </head>
 <body>
@@ -25,6 +205,30 @@
 
     const SUPABASE_URL  = "https://sazupuqxwrnvgzsdxkjg.supabase.co";
     const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhenVwdXF4d3Judmd6c2R4a2pnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNzc1MTEsImV4cCI6MjA5NDg1MzUxMX0.j2vQhrzFDDoaMV9i6CDIvF_9vpenDSFZ5julcjfXIBE";
+
+    const CONFETTI_BITS = [
+      { left: "8%",  delay: "0s",   dur: "3.2s", color: "#dc2626" },
+      { left: "18%", delay: "0.6s", dur: "3.8s", color: "#f8fafc" },
+      { left: "32%", delay: "1.2s", dur: "3.4s", color: "#1e3a8a" },
+      { left: "48%", delay: "0.3s", dur: "4.0s", color: "#fbbf24" },
+      { left: "62%", delay: "1.5s", dur: "3.0s", color: "#dc2626" },
+      { left: "76%", delay: "0.9s", dur: "3.6s", color: "#1e3a8a" },
+      { left: "88%", delay: "1.8s", dur: "3.2s", color: "#fbbf24" },
+      { left: "94%", delay: "0.2s", dur: "3.9s", color: "#f8fafc" },
+    ];
+
+    const BONUS_ICONS = {
+      winner:    { icon: "🏆", bg: "linear-gradient(135deg, #f59e0b, #d97706)" },
+      finalist:  { icon: "🥈", bg: "linear-gradient(135deg, #94a3b8, #475569)" },
+      semi:      { icon: "🏟️", bg: "linear-gradient(135deg, #3b82f6, #1e3a8a)" },
+      topscorer: { icon: "⚽", bg: "linear-gradient(135deg, #22c55e, #15803d)" },
+      surprise:  { icon: "🎉", bg: "linear-gradient(135deg, #ec4899, #be185d)" },
+      upset:     { icon: "💥", bg: "linear-gradient(135deg, #dc2626, #7f1d1d)" },
+    };
+
+    function initials(name) {
+      return (name || "?").trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase();
+    }
 
     const GROUPS = [
       { id: "A", teams: ["Mexique", "Afrique du Sud", "Corée du Sud", "Rép. tchèque"] },
@@ -67,12 +271,11 @@
       "Angleterre": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Croatie": "🇭🇷", "Ghana": "🇬🇭", "Panama": "🇵🇦",
     };
 
-    const PARTICIPANT_COLORS = ["#e63946","#2a9d8f","#f4a261","#457b9d","#a8dadc","#e9c46a","#264653","#f77f00"];
-
     const C = {
       bg: "#0a0e1a", card: "#111827", border: "#1e293b", accent: "#3b82f6",
       gold: "#f59e0b", silver: "#94a3b8", bronze: "#cd7c2f",
       text: "#f1f5f9", muted: "#64748b", green: "#22c55e", yellow: "#eab308",
+      red: "#dc2626", blue: "#1e3a8a", whiteUS: "#f8fafc",
     };
 
     const medalColors = ["#f59e0b", "#94a3b8", "#cd7c2f"];
@@ -136,7 +339,6 @@
 
         // ── Computed ──────────────────────────────────────────────────────────
         const rtColor      = computed(() => rtStatus.value === "connected" ? C.green : C.yellow);
-        const rtDot        = computed(() => rtStatus.value === "connected" ? "🟢" : "🟡");
         const groupMatches = computed(() => matches.value.filter(m => m.group === activeGroup.value));
 
         function calcScore(pid) {
@@ -149,7 +351,7 @@
           });
           BONUS_TYPES.forEach(b => {
             for (let i = 0; i < b.count; i++) {
-              const key = `${b.id}_${i}`;
+              const key = b.id + "_" + i;
               const res = bonusResults.value[key], prono = bonusPronostics.value[pid]?.[key];
               if (res && prono && res.toLowerCase().trim() === prono.toLowerCase().trim()) total += b.points;
             }
@@ -163,25 +365,18 @@
         );
 
         // ── Style helpers ─────────────────────────────────────────────────────
-        const sCard       = { background: C.card, border: `1px solid ${C.border}`, borderRadius: "12px", padding: "14px", marginBottom: "10px" };
-        const sInput      = { background: "#1e293b", border: `1px solid ${C.border}`, borderRadius: "8px", color: C.text, padding: "8px 12px", fontFamily: "'Syne', sans-serif", fontSize: "13px", outline: "none", width: "100%" };
-        const sScoreInput = { background: "#1e293b", border: `1px solid ${C.border}`, borderRadius: "6px", color: C.text, padding: "6px 0", fontFamily: "'Syne', sans-serif", fontSize: "15px", fontWeight: 700, textAlign: "center", width: "44px", outline: "none" };
-        const sLabel      = { color: C.muted, fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px", display: "block" };
+        const sCard  = { background: C.card, border: "1px solid " + C.border, borderRadius: "12px", padding: "14px", marginBottom: "10px" };
+        const sInput = { background: "#1e293b", border: "1px solid " + C.border, borderRadius: "8px", color: C.text, padding: "8px 12px", fontFamily: "'Syne', sans-serif", fontSize: "13px", outline: "none", width: "100%" };
+        const sLabel = { color: C.muted, fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px", display: "block" };
 
         function tabStyle(active) {
-          return { padding: "10px 16px", background: active ? C.accent : "transparent", color: active ? "#fff" : C.muted, border: "none", borderRadius: "8px 8px 0 0", cursor: "pointer", fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: "13px" };
+          return { padding: "10px 16px", background: active ? "#dc2626" : "transparent", color: active ? "#fff" : C.muted, border: "none", borderRadius: "8px 8px 0 0", cursor: "pointer", fontFamily: "'Anton', sans-serif", fontSize: "14px", letterSpacing: "1.2px", textTransform: "uppercase", borderBottom: active ? "3px solid #1e3a8a" : "3px solid transparent" };
         }
         function btnStyle(color) {
           return { background: color || C.accent, color: "#fff", border: "none", borderRadius: "8px", padding: "8px 16px", cursor: "pointer", fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "13px" };
         }
         function badgeStyle(color) {
-          return { background: color + "22", color, border: `1px solid ${color}44`, borderRadius: "6px", padding: "2px 8px", fontSize: "12px", fontWeight: 700 };
-        }
-        function groupBtnStyle(active) {
-          return { padding: "6px 11px", background: active ? C.accent : "#1e293b", color: active ? "#fff" : C.muted, border: `1px solid ${active ? C.accent : C.border}`, borderRadius: "8px", cursor: "pointer", fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: "12px" };
-        }
-        function pBtnStyle(active, color) {
-          return { padding: "6px 13px", background: active ? color : "#1e293b", color: active ? "#fff" : C.muted, border: `1px solid ${active ? color : C.border}`, borderRadius: "20px", cursor: "pointer", fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: "12px" };
+          return { background: color + "22", color, border: "1px solid " + color + "44", borderRadius: "6px", padding: "2px 8px", fontSize: "12px", fontWeight: 700 };
         }
 
         // ── Template helpers ──────────────────────────────────────────────────
@@ -194,10 +389,14 @@
         function ptColor(pts, hasRes) {
           return pts === 3 ? C.green : pts === 1 ? C.yellow : hasRes ? "#ef4444" : C.muted;
         }
-        function getBonusProno(pid, key)    { return bonusPronostics.value[pid]?.[key] || ""; }
+        function getBonusProno(pid, key)  { return bonusPronostics.value[pid]?.[key] || ""; }
         function isBonusCorrect(pid, key) {
           const res = bonusResults.value[key], prono = bonusPronostics.value[pid]?.[key];
           return !!(res && prono && res.toLowerCase().trim() === prono.toLowerCase().trim());
+        }
+        function isBonusWrong(pid, key) {
+          const res = bonusResults.value[key], prono = bonusPronostics.value[pid]?.[key];
+          return !!(res && prono && res.toLowerCase().trim() !== prono.toLowerCase().trim());
         }
         function matchPtsForRanking(pid) {
           return matches.value.reduce((acc, m) => {
@@ -212,6 +411,10 @@
         function activeParticipantName() {
           return participants.value.find(p => p.id === activeParticipant.value)?.name || "";
         }
+        function activeParticipantColor() {
+          return participants.value.find(p => p.id === activeParticipant.value)?.color || C.accent;
+        }
+        function getBonusIcon(id) { return BONUS_ICONS[id] || { icon: "⭐", bg: "linear-gradient(135deg, #6366f1, #4338ca)" }; }
 
         // ── Flash / debounce ──────────────────────────────────────────────────
         function flash() { saveMsg.value = "✓ Sauvegardé"; setTimeout(() => { saveMsg.value = ""; }, 2000); }
@@ -223,14 +426,10 @@
         // ── Data actions ──────────────────────────────────────────────────────
         function setMatchResult(matchId, side, val) {
           matches.value = matches.value.map(m => m.id !== matchId ? m : { ...m, result: { ...m.result, [side]: val } });
-          debounce(`mr_${matchId}`, async () => {
+          debounce("mr_" + matchId, async () => {
             const m = matches.value.find(x => x.id === matchId);
             if (!m) return;
-            await sb.from("match_results").upsert({
-              match_id: matchId,
-              result_home: m.result.home === "" ? null : parseInt(m.result.home),
-              result_away: m.result.away === "" ? null : parseInt(m.result.away),
-            }, { onConflict: "match_id" });
+            await sb.from("match_results").upsert({ match_id: matchId, result_home: m.result.home === "" ? null : parseInt(m.result.home), result_away: m.result.away === "" ? null : parseInt(m.result.away) }, { onConflict: "match_id" });
           });
         }
 
@@ -238,34 +437,26 @@
           if (!isMe(pid)) return;
           const cur = pronostics.value;
           pronostics.value = { ...cur, [pid]: { ...cur[pid], [matchId]: { ...(cur[pid]?.[matchId] || {}), [side]: val } } };
-          debounce(`prono_${pid}_${matchId}`, async () => {
+          debounce("prono_" + pid + "_" + matchId, async () => {
             const prono = pronostics.value[pid]?.[matchId];
             if (!prono) return;
-            await sb.from("pronostics").upsert({
-              participant_id: pid, match_id: matchId,
-              prono_home: prono.home === "" ? null : parseInt(prono.home),
-              prono_away: prono.away === "" ? null : parseInt(prono.away),
-              is_joker: jokers.value[pid] === matchId,
-            }, { onConflict: "participant_id,match_id" });
+            await sb.from("pronostics").upsert({ participant_id: pid, match_id: matchId, prono_home: prono.home === "" ? null : parseInt(prono.home), prono_away: prono.away === "" ? null : parseInt(prono.away), is_joker: jokers.value[pid] === matchId }, { onConflict: "participant_id,match_id" });
           });
         }
 
         function setBonus(pid, bonusId, idx, val) {
           if (!isMe(pid)) return;
-          const key = `${bonusId}_${idx}`;
+          const key = bonusId + "_" + idx;
           bonusPronostics.value = { ...bonusPronostics.value, [pid]: { ...bonusPronostics.value[pid], [key]: val } };
-          debounce(`bp_${pid}_${key}`, async () => {
-            await sb.from("bonus_pronostics").upsert(
-              { participant_id: pid, bonus_key: key, value: val },
-              { onConflict: "participant_id,bonus_key" }
-            );
+          debounce("bp_" + pid + "_" + key, async () => {
+            await sb.from("bonus_pronostics").upsert({ participant_id: pid, bonus_key: key, value: val }, { onConflict: "participant_id,bonus_key" });
           });
         }
 
         function setBonusResult(bonusId, idx, val) {
-          const key = `${bonusId}_${idx}`;
+          const key = bonusId + "_" + idx;
           bonusResults.value = { ...bonusResults.value, [key]: val };
-          debounce(`br_${key}`, async () => {
+          debounce("br_" + key, async () => {
             await sb.from("bonus_results").upsert({ bonus_key: key, value: val }, { onConflict: "bonus_key" });
           });
         }
@@ -275,86 +466,52 @@
           const isCurrentJoker = jokers.value[pid] === matchId;
           const oldJokerMatchId = jokers.value[pid];
           jokers.value = { ...jokers.value, [pid]: isCurrentJoker ? null : matchId };
-
           if (oldJokerMatchId && oldJokerMatchId !== matchId) {
             const oldProno = pronostics.value[pid]?.[oldJokerMatchId] || {};
-            await sb.from("pronostics").upsert({
-              participant_id: pid, match_id: oldJokerMatchId,
-              prono_home: oldProno.home === "" ? null : parseInt(oldProno.home),
-              prono_away: oldProno.away === "" ? null : parseInt(oldProno.away),
-              is_joker: false,
-            }, { onConflict: "participant_id,match_id" });
+            await sb.from("pronostics").upsert({ participant_id: pid, match_id: oldJokerMatchId, prono_home: oldProno.home === "" ? null : parseInt(oldProno.home), prono_away: oldProno.away === "" ? null : parseInt(oldProno.away), is_joker: false }, { onConflict: "participant_id,match_id" });
           }
-
           const prono = pronostics.value[pid]?.[matchId] || {};
-          await sb.from("pronostics").upsert({
-            participant_id: pid, match_id: matchId,
-            prono_home: prono.home === "" ? null : parseInt(prono.home),
-            prono_away: prono.away === "" ? null : parseInt(prono.away),
-            is_joker: !isCurrentJoker,
-          }, { onConflict: "participant_id,match_id" });
+          await sb.from("pronostics").upsert({ participant_id: pid, match_id: matchId, prono_home: prono.home === "" ? null : parseInt(prono.home), prono_away: prono.away === "" ? null : parseInt(prono.away), is_joker: !isCurrentJoker }, { onConflict: "participant_id,match_id" });
           flash();
         }
 
         // ── Auth actions ──────────────────────────────────────────────────────
         async function doRegister() {
-          authLoading.value = true;
-          authError.value = "";
+          authLoading.value = true; authError.value = "";
           try {
             const username = authUsername.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
             if (username.length < 2) throw new Error("Le nom doit faire au moins 2 caractères (lettres, chiffres, _)");
             if (authPassword.value.length < 6) throw new Error("Le mot de passe doit faire au moins 6 caractères");
-            const { data, error } = await sb.auth.signUp({ email: `${username}@mfga.app`, password: authPassword.value });
+            const { data, error } = await sb.auth.signUp({ email: username + "@mfga.app", password: authPassword.value });
             if (error) {
-              if (error.message.includes("already registered") || error.message.includes("already exists"))
-                throw new Error("Ce nom d'utilisateur est déjà pris");
-              if (error.message.includes("rate limit"))
-                throw new Error("Trop de tentatives, réessayez dans quelques minutes");
+              if (error.message.includes("already registered") || error.message.includes("already exists")) throw new Error("Ce nom d'utilisateur est déjà pris");
+              if (error.message.includes("rate limit")) throw new Error("Trop de tentatives, réessayez dans quelques minutes");
               throw error;
             }
-            if (data.user && !data.session)
-              throw new Error("Confirmez votre email avant de vous connecter (ou désactivez la confirmation email dans Supabase)");
-          } catch (e) {
-            authError.value = e.message;
-          } finally {
-            authLoading.value = false;
-          }
+            if (data.user && !data.session) throw new Error("Confirmez votre email avant de vous connecter");
+          } catch (e) { authError.value = e.message; } finally { authLoading.value = false; }
         }
 
         async function doLogin() {
-          authLoading.value = true;
-          authError.value = "";
+          authLoading.value = true; authError.value = "";
           try {
             const username = authUsername.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
-            const { error } = await sb.auth.signInWithPassword({ email: `${username}@mfga.app`, password: authPassword.value });
+            const { error } = await sb.auth.signInWithPassword({ email: username + "@mfga.app", password: authPassword.value });
             if (error) throw new Error("Nom d'utilisateur ou mot de passe incorrect");
-          } catch (e) {
-            authError.value = e.message;
-          } finally {
-            authLoading.value = false;
-          }
+          } catch (e) { authError.value = e.message; } finally { authLoading.value = false; }
         }
 
         async function doLogout() {
           if (realtimeChannel) { sb.removeChannel(realtimeChannel); realtimeChannel = null; }
           await sb.auth.signOut();
-          session.value = null;
-          profile.value = null;
-          loaded.value = false;
-          participants.value = [];
-          pronostics.value = {};
-          bonusPronostics.value = {};
-          bonusResults.value = {};
-          jokers.value = {};
-          matches.value = buildDefaultMatches();
-          tab.value = 0;
-          authUsername.value = "";
-          authPassword.value = "";
+          session.value = null; profile.value = null; loaded.value = false;
+          participants.value = []; pronostics.value = {}; bonusPronostics.value = {};
+          bonusResults.value = {}; jokers.value = {}; matches.value = buildDefaultMatches();
+          tab.value = 0; authUsername.value = ""; authPassword.value = "";
         }
 
         // ── Data loading ──────────────────────────────────────────────────────
         async function loadData(userId) {
-          // Fetch profile (with retry in case trigger hasn't completed yet)
           let { data: prof } = await sb.from("profiles").select("*").eq("id", userId).single();
           if (!prof) {
             await new Promise(r => setTimeout(r, 900));
@@ -385,8 +542,7 @@
             pronos[p.participant_id][p.match_id] = { home: p.prono_home !== null ? String(p.prono_home) : "", away: p.prono_away !== null ? String(p.prono_away) : "" };
             if (p.is_joker) jkrs[p.participant_id] = p.match_id;
           });
-          pronostics.value = pronos;
-          jokers.value = jkrs;
+          pronostics.value = pronos; jokers.value = jkrs;
 
           const bRes = {};
           (brData || []).forEach(r => { bRes[r.bonus_key] = r.value; });
@@ -398,7 +554,6 @@
             bPronos[p.participant_id][p.bonus_key] = p.value;
           });
           bonusPronostics.value = bPronos;
-
           loaded.value = true;
 
           if (realtimeChannel) sb.removeChannel(realtimeChannel);
@@ -447,37 +602,37 @@
           bonusPronostics, bonusResults, jokers, activeGroup, activeParticipant,
           myParticipantId, canEditProno, isMe,
           GROUPS, BONUS_TYPES, TABS, C, medalColors, medalIcons,
-          rtColor, rtDot, groupMatches, rankings,
-          sCard, sInput, sScoreInput, sLabel,
-          tabStyle, btnStyle, badgeStyle, groupBtnStyle, pBtnStyle,
+          rtColor, groupMatches, rankings,
+          sCard, sInput, sLabel,
+          tabStyle, btnStyle, badgeStyle,
           getFlag, calcScore, setMatchResult, setProno, setBonus, setBonusResult, toggleJoker,
           getProno, isJokerMatch, getMatchPts, ptColor, getBonusProno,
-          isBonusCorrect, matchPtsForRanking, matchesPlayedCount, activeParticipantName,
+          isBonusCorrect, isBonusWrong, matchPtsForRanking, matchesPlayedCount, activeParticipantName, activeParticipantColor,
+          getBonusIcon, initials, CONFETTI_BITS, BONUS_ICONS,
         };
       },
 
       template: `
         <!-- ── Auth screen ── -->
         <div v-if="!session" :style="{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: 'Syne, sans-serif', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px' }">
-          <div style="text-align: center; margin-bottom: 32px">
-            <svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom: 12px">
-              <circle cx="50" cy="50" r="48" fill="#1e3a8a" stroke="#3b82f6" stroke-width="2"/>
-              <text x="50" y="36" text-anchor="middle" fill="white" font-size="13" font-weight="800" font-family="Syne,sans-serif">FIFA</text>
-              <text x="50" y="54" text-anchor="middle" fill="#f59e0b" font-size="18" font-weight="800" font-family="Syne,sans-serif">2026</text>
-              <text x="50" y="70" text-anchor="middle" fill="white" font-size="9" font-family="Syne,sans-serif">🇺🇸🇨🇦🇲🇽</text>
-              <path d="M20 78 Q50 90 80 78" stroke="#f59e0b" stroke-width="2" fill="none"/>
-            </svg>
-            <div :style="{ fontSize: '22px', fontWeight: 800, background: 'linear-gradient(90deg, #60a5fa, #a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }">🐐 Make Football Goat Again</div>
-            <div :style="{ color: '#f59e0b', fontSize: '11px', fontWeight: 600, marginTop: '4px' }">FIFA 2026 · Pronostics entre amis</div>
+          <div style="text-align: center; margin-bottom: 28px">
+            <div class="wc-mark" style="margin: 0 auto 16px; display: inline-flex">
+              <span class="dot" style="background: #dc2626"></span>
+              <span class="dot" style="background: #1e3a8a"></span>
+              WORLD CUP&nbsp;2026
+            </div>
+            <div class="title-mfga" style="margin-bottom: 6px">MAKE <span class="title-red">FOOTBALL</span></div>
+            <div class="title-mfga">GOAT <span class="title-blue">AGAIN</span> <span style="font-size: 26px">🐐</span></div>
+            <div style="color: #fca5a5; font-size: 11px; font-weight: 600; margin-top: 8px; letter-spacing: 0.5px">★ Pronostics non-officiels · 100 % bipartisan ★</div>
           </div>
 
           <div :style="{ background: C.card, border: '1px solid ' + C.border, borderRadius: '16px', padding: '28px 24px', width: '100%', maxWidth: '360px' }">
-            <div style="display: flex; gap: 4px; margin-bottom: 24px; background: #0f172a; border-radius: '10px'; padding: '4px'">
+            <div style="display: flex; gap: 4px; margin-bottom: 24px; background: #0f172a; border-radius: 10px; padding: 4px">
               <button
-                :style="{ flex: 1, padding: '9px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: '13px', background: authMode === 'login' ? C.accent : 'transparent', color: authMode === 'login' ? '#fff' : C.muted, transition: 'all .15s' }"
+                :style="{ flex: 1, padding: '9px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontFamily: 'Anton, Syne, sans-serif', fontSize: '13px', letterSpacing: '1px', textTransform: 'uppercase', background: authMode === 'login' ? '#dc2626' : 'transparent', color: authMode === 'login' ? '#fff' : C.muted }"
                 @click="authMode = 'login'">Se connecter</button>
               <button
-                :style="{ flex: 1, padding: '9px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: '13px', background: authMode === 'register' ? C.accent : 'transparent', color: authMode === 'register' ? '#fff' : C.muted, transition: 'all .15s' }"
+                :style="{ flex: 1, padding: '9px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontFamily: 'Anton, Syne, sans-serif', fontSize: '13px', letterSpacing: '1px', textTransform: 'uppercase', background: authMode === 'register' ? '#dc2626' : 'transparent', color: authMode === 'register' ? '#fff' : C.muted }"
                 @click="authMode = 'register'">S'inscrire</button>
             </div>
 
@@ -498,7 +653,7 @@
             </div>
 
             <button
-              :style="{ ...btnStyle(), width: '100%', padding: '11px', fontSize: '14px', opacity: authLoading ? 0.7 : 1, cursor: authLoading ? 'not-allowed' : 'pointer' }"
+              :style="{ background: '#dc2626', boxShadow: '0 2px 0 #1e3a8a', color: '#fff', border: 'none', borderRadius: '8px', padding: '11px', width: '100%', fontSize: '14px', fontFamily: 'Anton, sans-serif', letterSpacing: '1px', textTransform: 'uppercase', cursor: authLoading ? 'not-allowed' : 'pointer', opacity: authLoading ? 0.7 : 1 }"
               :disabled="authLoading"
               @click="authMode === 'login' ? doLogin() : doRegister()">
               {{ authLoading ? '…' : (authMode === 'login' ? 'Se connecter' : 'Créer mon compte') }}
@@ -520,121 +675,243 @@
         <div v-else :style="{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: 'Syne, sans-serif', paddingBottom: '40px' }">
 
           <!-- Header -->
-          <div :style="{ background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)', borderBottom: '1px solid ' + C.border, padding: '20px 20px 0' }">
-            <div style="max-width: 800px; margin: 0 auto">
-              <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 2px">
-                <div style="flex-shrink: 0">
-                  <svg width="50" height="50" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="50" cy="50" r="48" fill="#1e3a8a" stroke="#3b82f6" stroke-width="2"/>
-                    <text x="50" y="36" text-anchor="middle" fill="white" font-size="13" font-weight="800" font-family="Syne,sans-serif">FIFA</text>
-                    <text x="50" y="54" text-anchor="middle" fill="#f59e0b" font-size="18" font-weight="800" font-family="Syne,sans-serif">2026</text>
-                    <text x="50" y="70" text-anchor="middle" fill="white" font-size="9" font-family="Syne,sans-serif">🇺🇸🇨🇦🇲🇽</text>
-                    <path d="M20 78 Q50 90 80 78" stroke="#f59e0b" stroke-width="2" fill="none"/>
-                  </svg>
+          <div class="hero-wrap" style="padding: 18px 16px 0; position: relative">
+            <div class="hero-stars"></div>
+            <div class="hero-stripes"></div>
+            <div v-for="(c, i) in CONFETTI_BITS" :key="i" class="confetti-bit"
+              :style="{ left: c.left, top: '-10px', background: c.color, animationDelay: c.delay, animationDuration: c.dur, transform: 'rotate(' + (i * 23) + 'deg)' }"></div>
+
+            <div style="max-width: 800px; margin: 0 auto; position: relative; z-index: 2">
+              <!-- Top bar: WC mark + status + user -->
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px">
+                <div class="wc-mark">
+                  <span class="dot" style="background: #dc2626"></span>
+                  <span class="dot" style="background: #1e3a8a"></span>
+                  WORLD CUP&nbsp;2026
                 </div>
-                <div style="flex: 1">
-                  <div :style="{ fontSize: '22px', fontWeight: 800, letterSpacing: '-0.5px', background: 'linear-gradient(90deg, #60a5fa, #a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }">🐐 Make Football Goat Again 🦅</div>
-                  <div :style="{ color: '#f59e0b', fontSize: '11px', fontWeight: 600, marginTop: '2px' }">La compét' d'Infantino, bénie par Trump, gagnée par les chèvres</div>
-                </div>
-                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0">
-                  <div :style="{ fontSize: '11px', color: saveMsg ? C.green : rtColor, fontWeight: 600 }">
-                    {{ saveMsg || (rtDot + ' ' + (rtStatus === 'connected' ? 'En direct' : 'Connexion…')) }}
+                <div style="display: flex; align-items: center; gap: 12px">
+                  <div style="display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase"
+                    :style="{ color: saveMsg ? '#22c55e' : (rtStatus === 'connected' ? '#22c55e' : '#eab308') }">
+                    <span :class="rtStatus === 'connected' ? 'live-dot' : ''"
+                      :style="{ width: '8px', height: '8px', borderRadius: '50%', display: 'inline-block', background: saveMsg ? '#22c55e' : (rtStatus === 'connected' ? '#22c55e' : '#eab308') }"></span>
+                    {{ saveMsg ? 'Sauvegardé' : (rtStatus === 'connected' ? 'En direct' : 'Connexion...') }}
                   </div>
-                  <div style="display: flex; align-items: center; gap: 8px">
-                    <span :style="{ fontSize: '12px', color: C.muted }">👤 {{ profile?.username }}</span>
-                    <button @click="doLogout" :style="{ ...btnStyle('#374151'), padding: '4px 10px', fontSize: '11px' }">Déconnexion</button>
-                  </div>
+                  <span :style="{ fontSize: '12px', color: C.muted }">👤 {{ profile && profile.username }}</span>
+                  <button @click="doLogout" style="background: #1e293b; color: #94a3b8; border: 1px solid #334155; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-family: Syne, sans-serif; font-size: 11px">Déco</button>
                 </div>
               </div>
-              <div :style="{ color: C.muted, fontSize: '12px', marginBottom: '14px', marginTop: '6px' }">{{ participants.length }} participant{{ participants.length > 1 ? 's' : '' }} · {{ matches.length }} matchs · données partagées en temps réel</div>
+
+              <!-- Mascot + title -->
+              <div style="display: flex; align-items: flex-end; gap: 14px; margin-bottom: 12px">
+                <div style="flex-shrink: 0; position: relative">
+                  <img src="assets/mascot.png" alt="MFGA Goat" width="120" height="102"
+                    style="display: block; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.6))" />
+                  <svg class="ball-spin" width="28" height="28" viewBox="0 0 32 32" style="position: absolute; top: 0; right: -8px">
+                    <circle cx="16" cy="16" r="14" fill="#f8fafc" stroke="#0a0e1a" stroke-width="1.5"/>
+                    <polygon points="16,9 21,13 19,19 13,19 11,13" fill="#0a0e1a"/>
+                    <path d="M16 9 L16 4 M21 13 L26 11 M19 19 L23 23 M13 19 L9 23 M11 13 L6 11" stroke="#0a0e1a" stroke-width="1.2" fill="none"/>
+                  </svg>
+                </div>
+                <div style="flex: 1; min-width: 0">
+                  <div class="title-mfga">MAKE <span class="title-red">FOOTBALL</span></div>
+                  <div class="title-mfga" style="margin-top: 2px">GOAT <span class="title-blue">AGAIN</span> <span style="font-size: 26px">🐐</span></div>
+                  <div style="color: #fca5a5; font-size: 11px; font-weight: 600; margin-top: 4px; letter-spacing: 0.5px">★ Pronostics non-officiels · 100 % bipartisan ★</div>
+                </div>
+              </div>
+
+              <!-- Host countries -->
+              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 11px; color: #cbd5e1; font-weight: 600">
+                <span style="color: #64748b; letter-spacing: 1px; text-transform: uppercase; font-size: 10px">Pays hôtes</span>
+                <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(220,38,38,0.18); border: 1px solid rgba(220,38,38,0.4); padding: 2px 8px; border-radius: 4px">🇺🇸 USA</span>
+                <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(220,38,38,0.18); border: 1px solid rgba(220,38,38,0.4); padding: 2px 8px; border-radius: 4px">🇨🇦 Canada</span>
+                <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(34,197,94,0.18); border: 1px solid rgba(34,197,94,0.4); padding: 2px 8px; border-radius: 4px">🇲🇽 Mexico</span>
+                <span style="margin-left: auto; color: #64748b; font-size: 10px">{{ participants.length }} joueur{{ participants.length > 1 ? 's' : '' }} · {{ matches.length }} matchs</span>
+              </div>
+
+              <!-- Tabs -->
               <div style="display: flex; gap: 4px; margin-top: 4px">
                 <button v-for="(t, i) in TABS" :key="i" :style="tabStyle(tab === i)" @click="tab = i">{{ t }}</button>
               </div>
             </div>
+            <div class="flag-strip" style="margin-top: 0"></div>
           </div>
 
           <div style="max-width: 800px; margin: 0 auto; padding: 16px 14px">
 
             <!-- TAB 0 — Participants -->
             <div v-if="tab === 0">
-              <div v-for="p in participants" :key="p.id" :style="{ ...sCard, display: 'flex', alignItems: 'center', gap: '12px' }">
-                <div :style="{ width: '12px', height: '12px', borderRadius: '50%', background: p.color, flexShrink: 0 }"></div>
-                <div style="flex: 1; font-weight: 700; font-size: 15px">{{ p.name }}</div>
-                <div v-if="isMe(p.id)" :style="{ fontSize: '11px', color: C.accent, fontWeight: 700, background: C.accent + '18', border: '1px solid ' + C.accent + '44', borderRadius: '6px', padding: '2px 7px' }">Moi</div>
-                <div :style="badgeStyle(p.color)">{{ calcScore(p.id).total }} pts</div>
+              <div v-if="participants.length === 0" :style="{ ...sCard, textAlign: 'center', padding: '30px', color: C.muted }">
+                <div style="font-size: 36px; margin-bottom: 6px">🎉</div>
+                Aucun participant enregistré.
               </div>
-              <div :style="{ ...sCard, marginTop: '20px', background: '#0f172a', border: '1px solid #1e3a5f' }">
-                <div style="font-size: 13px; color: #60a5fa; font-weight: 700; margin-bottom: 8px">📋 Règles du scoring</div>
-                <div :style="{ fontSize: '12px', color: C.muted, lineHeight: 1.9 }">
-                  <div>🎯 <b :style="{ color: C.text }">Score exact</b> → 3 pts</div>
-                  <div>✅ <b :style="{ color: C.text }">Bon résultat</b> (V/N/D sans score exact) → 1 pt</div>
-                  <div>❌ <b :style="{ color: C.text }">Mauvais résultat</b> → 0 pt</div>
-                  <div>🃏 <b :style="{ color: C.text }">Match Joker</b> → points × 2 (1 joker par participant)</div>
-                  <div :style="{ marginTop: '6px', borderTop: '1px solid ' + C.border, paddingTop: '6px' }">+ Bonus pronostics de début de tournoi (voir onglet Bonus)</div>
+
+              <div v-for="(p, idx) in rankings" :key="p.id" class="card-rel"
+                :style="{ ...sCard, display: 'flex', alignItems: 'center', gap: '12px', border: (rankings[0] && p.id === rankings[0].id && p.total > 0) ? '1px solid #f59e0b66' : '1px solid ' + C.border, background: (rankings[0] && p.id === rankings[0].id && p.total > 0) ? 'linear-gradient(90deg, #1c1507 0%, #111827 60%)' : C.card }">
+                <div v-if="rankings[0] && p.id === rankings[0].id && p.total > 0"
+                  style="position: absolute; top: 0; right: 0; background: #f59e0b; color: #0a0e1a; font-size: 9px; font-weight: 800; padding: 2px 8px 2px 10px; letter-spacing: 1px; font-family: Anton, sans-serif; clip-path: polygon(15% 0, 100% 0, 100% 100%, 0 100%)">LEADER</div>
+                <div class="avatar-disc star" :style="{ background: 'linear-gradient(135deg, ' + p.color + ', ' + p.color + 'cc)' }">
+                  {{ initials(p.name) }}
+                </div>
+                <div style="flex: 1; min-width: 0">
+                  <div class="anton" style="font-size: 16px; color: #f1f5f9; letter-spacing: 0.5px">{{ p.name }}</div>
+                  <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px">
+                    <div style="font-size: 11px; color: #64748b">🎯 {{ p.exactCount }} exact{{ p.exactCount > 1 ? 's' : '' }}</div>
+                    <div v-if="isMe(p.id)" style="font-size: 10px; color: #3b82f6; font-weight: 700; background: #3b82f618; border: 1px solid #3b82f633; border-radius: 4px; padding: 1px 5px">Moi</div>
+                  </div>
+                </div>
+                <div style="text-align: right">
+                  <div class="anton" :style="{ fontSize: '22px', color: (rankings[0] && p.id === rankings[0].id && p.total > 0) ? '#fbbf24' : C.text, lineHeight: 1 }">{{ p.total }}</div>
+                  <div style="font-size: 9px; color: #64748b; letter-spacing: 1px; text-transform: uppercase">points</div>
+                </div>
+              </div>
+
+              <!-- Rules card -->
+              <div class="card-rel" :style="{ ...sCard, marginTop: '20px', background: '#0a0e1a', border: '1px solid #1e293b' }">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px">
+                  <div class="ribbon">RÈGLES</div>
+                  <div style="font-size: 12px; color: #64748b">du scoring</div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
+                  <div class="rule-chip" style="border-color: #22c55e44">
+                    <div class="num" style="color: #22c55e">3</div>
+                    <div><div class="lbl">🎯 Score exact</div><div class="sub">Pile poil — 1-2 = 1-2</div></div>
+                  </div>
+                  <div class="rule-chip" style="border-color: #eab30844">
+                    <div class="num" style="color: #eab308">1</div>
+                    <div><div class="lbl">✅ Bon résultat</div><div class="sub">V/N/D sans score exact</div></div>
+                  </div>
+                  <div class="rule-chip" style="border-color: #dc262644">
+                    <div class="num" style="color: #dc2626">0</div>
+                    <div><div class="lbl">❌ Mauvais résultat</div><div class="sub">Rien dans la besace</div></div>
+                  </div>
+                  <div class="rule-chip" style="border-color: #f59e0b44; background: linear-gradient(135deg, rgba(245,158,11,0.10), rgba(15,23,42,0.7))">
+                    <div class="num" style="color: #f59e0b">×2</div>
+                    <div><div class="lbl">🃏 Match Joker</div><div class="sub">1 joker par joueur</div></div>
+                  </div>
+                </div>
+                <div style="margin-top: 10px; padding: 8px 10px; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); border-radius: 8px; font-size: 11px; color: #fde68a">
+                  ★ Bonus de début de tournoi en plus (voir onglet <b>Bonus</b>)
                 </div>
               </div>
             </div>
 
             <!-- TAB 1 — Matchs -->
             <div v-if="tab === 1">
-              <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px">
-                <button v-for="g in GROUPS" :key="g.id" :style="groupBtnStyle(activeGroup === g.id)" @click="activeGroup = g.id">Groupe {{ g.id }}</button>
-              </div>
+              <!-- Group selector -->
               <div style="margin-bottom: 14px">
-                <div :style="sLabel">Pronostics de</div>
+                <div :style="sLabel">★ Groupe</div>
                 <div style="display: flex; flex-wrap: wrap; gap: 6px">
-                  <button v-for="p in participants" :key="p.id" :style="pBtnStyle(activeParticipant === p.id, p.color)" @click="activeParticipant = p.id">{{ p.name }}{{ isMe(p.id) ? ' (moi)' : '' }}</button>
+                  <button v-for="g in GROUPS" :key="g.id" class="group-pill"
+                    :style="{ background: activeGroup === g.id ? 'linear-gradient(135deg, #dc2626, #991b1b)' : '#1e293b', color: activeGroup === g.id ? '#fff' : '#94a3b8', borderColor: activeGroup === g.id ? '#fbbf24' : 'transparent', boxShadow: activeGroup === g.id ? '0 2px 0 #1e3a8a' : 'none' }"
+                    @click="activeGroup = g.id">{{ g.id }}</button>
                 </div>
               </div>
-              <div v-if="!canEditProno" :style="{ background: '#1e293b', border: '1px solid ' + C.border, borderRadius: '8px', padding: '8px 14px', marginBottom: '12px', fontSize: '12px', color: C.muted, display: 'flex', alignItems: 'center', gap: '6px' }">
-                👁 Mode lecture seule — vous consultez les pronostics de {{ activeParticipantName() }}
-              </div>
-              <div v-for="m in groupMatches" :key="m.id" :style="{ ...sCard, position: 'relative' }">
-                <div v-if="isJokerMatch(activeParticipant, m.id)" :style="{ position: 'absolute', top: '8px', right: '8px', fontSize: '11px', background: '#f59e0b22', color: '#f59e0b', border: '1px solid #f59e0b44', borderRadius: '6px', padding: '2px 7px', fontWeight: 700 }">🃏 JOKER ×2</div>
-                <div :style="{ fontSize: '11px', color: C.muted, marginBottom: '8px', fontWeight: 600 }">GROUPE {{ m.group }}</div>
-                <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center">
-                  <div style="text-align: right; font-weight: 700; font-size: 13px">{{ getFlag(m.home) }} {{ m.home }}</div>
-                  <div :style="{ textAlign: 'center', color: C.muted, fontSize: '11px', fontWeight: 700 }">VS</div>
-                  <div style="font-weight: 700; font-size: 13px">{{ getFlag(m.away) }} {{ m.away }}</div>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px">
-                  <div style="background: #0f172a; border-radius: 8px; padding: 10px">
-                    <div :style="sLabel">Pronostic {{ activeParticipantName() }}</div>
-                    <div style="display: flex; align-items: center; gap: 6px; justify-content: center">
-                      <input :style="{ ...sScoreInput, opacity: canEditProno ? 1 : 0.6 }" type="number" min="0" max="20" placeholder="–"
-                        :disabled="!canEditProno"
-                        :value="getProno(activeParticipant, m.id).home ?? ''"
-                        @input="setProno(activeParticipant, m.id, 'home', $event.target.value)" />
-                      <span :style="{ color: C.muted, fontWeight: 700 }">–</span>
-                      <input :style="{ ...sScoreInput, opacity: canEditProno ? 1 : 0.6 }" type="number" min="0" max="20" placeholder="–"
-                        :disabled="!canEditProno"
-                        :value="getProno(activeParticipant, m.id).away ?? ''"
-                        @input="setProno(activeParticipant, m.id, 'away', $event.target.value)" />
-                    </div>
-                  </div>
-                  <div style="background: #0f172a; border-radius: 8px; padding: 10px">
-                    <div :style="sLabel">Résultat réel</div>
-                    <div style="display: flex; align-items: center; gap: 6px; justify-content: center">
-                      <input :style="sScoreInput" type="number" min="0" max="20" placeholder="–"
-                        :value="m.result.home"
-                        @input="setMatchResult(m.id, 'home', $event.target.value)" />
-                      <span :style="{ color: C.muted, fontWeight: 700 }">–</span>
-                      <input :style="sScoreInput" type="number" min="0" max="20" placeholder="–"
-                        :value="m.result.away"
-                        @input="setMatchResult(m.id, 'away', $event.target.value)" />
-                    </div>
-                  </div>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px">
-                  <button v-if="canEditProno"
-                    :style="{ ...btnStyle(isJokerMatch(activeParticipant, m.id) ? '#f59e0b' : '#1e293b'), fontSize: '11px', padding: '4px 10px', border: isJokerMatch(activeParticipant, m.id) ? 'none' : '1px solid ' + C.border }"
-                    @click="toggleJoker(activeParticipant, m.id)">
-                    🃏 {{ isJokerMatch(activeParticipant, m.id) ? 'Retirer Joker' : 'Joker' }}
+
+              <!-- Participant selector -->
+              <div style="margin-bottom: 14px">
+                <div :style="sLabel">★ Pronostics de</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px">
+                  <button v-for="p in participants" :key="p.id"
+                    :style="{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px 6px 6px', background: activeParticipant === p.id ? p.color : '#1e293b', color: activeParticipant === p.id ? '#fff' : '#94a3b8', border: '1px solid ' + (activeParticipant === p.id ? p.color : C.border), borderRadius: '999px', cursor: 'pointer', fontFamily: 'Anton, sans-serif', fontSize: '13px', letterSpacing: '0.5px', boxShadow: activeParticipant === p.id ? '0 2px 0 ' + p.color + '66' : 'none' }"
+                    @click="activeParticipant = p.id">
+                    <span :style="{ width: '22px', height: '22px', borderRadius: '50%', background: activeParticipant === p.id ? 'rgba(0,0,0,0.25)' : p.color, color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 }">{{ initials(p.name) }}</span>
+                    {{ p.name }}{{ isMe(p.id) ? ' (moi)' : '' }}
                   </button>
-                  <div v-else></div>
-                  <div v-if="m.result.home !== '' && m.result.away !== ''" :style="{ fontWeight: 800, fontSize: '14px', color: ptColor(getMatchPts(activeParticipant, m.id), true) }">
-                    +{{ isJokerMatch(activeParticipant, m.id) ? getMatchPts(activeParticipant, m.id) * 2 : getMatchPts(activeParticipant, m.id) }} pts
-                    <span v-if="isJokerMatch(activeParticipant, m.id) && getMatchPts(activeParticipant, m.id) > 0">({{ getMatchPts(activeParticipant, m.id) }}×2)</span>
+                </div>
+              </div>
+
+              <!-- Read-only notice -->
+              <div v-if="!canEditProno" :style="{ background: '#1e293b', border: '1px solid ' + C.border, borderRadius: '8px', padding: '8px 14px', marginBottom: '12px', fontSize: '12px', color: C.muted, display: 'flex', alignItems: 'center', gap: '6px' }">
+                👁 Mode lecture seule — pronostics de {{ activeParticipantName() }}
+              </div>
+
+              <!-- Match cards -->
+              <div v-for="(m, idx) in groupMatches" :key="m.id" class="card-rel"
+                :style="{ ...sCard, padding: '0', border: '1px solid ' + (isJokerMatch(activeParticipant, m.id) ? '#f59e0b66' : C.border), boxShadow: isJokerMatch(activeParticipant, m.id) ? '0 0 0 1px rgba(245,158,11,0.2), 0 4px 12px rgba(245,158,11,0.15)' : 'none', marginBottom: '12px' }">
+                <div class="scoreboard-strip"></div>
+                <!-- Match header -->
+                <div :style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', borderBottom: '1px solid ' + C.border, background: 'rgba(15,23,42,0.5)' }">
+                  <div style="display: flex; align-items: center; gap: 8px">
+                    <span class="anton" style="font-size: 11px; color: #fbbf24; letter-spacing: 1.5px">GROUPE {{ m.group }}</span>
+                    <span :style="{ color: C.muted, fontSize: '10px' }">·</span>
+                    <span :style="{ color: C.muted, fontSize: '10px', letterSpacing: '1px' }">MATCH {{ idx + 1 }}/6</span>
+                  </div>
+                  <div v-if="isJokerMatch(activeParticipant, m.id)" style="font-size: 10px; background: linear-gradient(90deg, #f59e0b, #d97706); color: #0a0e1a; border-radius: 4px; padding: 3px 8px; font-weight: 800; font-family: Anton, sans-serif; letter-spacing: 1px">🃏 JOKER ×2</div>
+                </div>
+
+                <!-- Teams + score inputs -->
+                <div style="padding: 14px">
+                  <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: stretch; margin-bottom: 14px">
+                    <div class="team-block" style="justify-content: flex-end; text-align: right">
+                      <span class="name" style="text-align: right">{{ m.home }}</span>
+                      <span class="flag">{{ getFlag(m.home) }}</span>
+                    </div>
+                    <div style="display: flex; align-items: center">
+                      <span class="vs-chunk">VS</span>
+                    </div>
+                    <div class="team-block">
+                      <span class="flag">{{ getFlag(m.away) }}</span>
+                      <span class="name">{{ m.away }}</span>
+                    </div>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
+                    <!-- Pronostic panel -->
+                    <div :style="{ background: '#0a0e1a', borderRadius: '10px', padding: '10px 8px', border: '1px solid ' + activeParticipantColor() + '44', position: 'relative' }">
+                      <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px">
+                        <span :style="{ width: '6px', height: '6px', borderRadius: '50%', background: activeParticipantColor() }"></span>
+                        <span :style="{ fontSize: '9px', color: activeParticipantColor(), fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase' }">{{ activeParticipantName() || 'Pronostic' }}</span>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 6px; justify-content: center">
+                        <input class="score-led" type="number" min="0" max="20" placeholder="–"
+                          :style="{ opacity: canEditProno ? 1 : 0.5 }"
+                          :disabled="!canEditProno"
+                          :value="getProno(activeParticipant, m.id).home ?? ''"
+                          @input="setProno(activeParticipant, m.id, 'home', $event.target.value)" />
+                        <span style="color: #475569; font-weight: 700; font-size: 22px; font-family: Anton, sans-serif">:</span>
+                        <input class="score-led" type="number" min="0" max="20" placeholder="–"
+                          :style="{ opacity: canEditProno ? 1 : 0.5 }"
+                          :disabled="!canEditProno"
+                          :value="getProno(activeParticipant, m.id).away ?? ''"
+                          @input="setProno(activeParticipant, m.id, 'away', $event.target.value)" />
+                      </div>
+                    </div>
+                    <!-- Result panel -->
+                    <div :style="{ background: '#0a0e1a', borderRadius: '10px', padding: '10px 8px', border: '1px solid ' + (m.result.home !== '' && m.result.away !== '' ? '#22c55e44' : C.border), position: 'relative' }">
+                      <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px">
+                        <span :class="m.result.home !== '' && m.result.away !== '' ? 'live-dot' : ''"
+                          :style="{ width: '6px', height: '6px', borderRadius: '50%', background: m.result.home !== '' && m.result.away !== '' ? '#22c55e' : '#475569' }"></span>
+                        <span :style="{ fontSize: '9px', color: m.result.home !== '' && m.result.away !== '' ? '#22c55e' : '#475569', fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase' }">Résultat final</span>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 6px; justify-content: center">
+                        <input class="score-led" type="number" min="0" max="20" placeholder="–"
+                          :value="m.result.home"
+                          @input="setMatchResult(m.id, 'home', $event.target.value)" />
+                        <span style="color: #475569; font-weight: 700; font-size: 22px; font-family: Anton, sans-serif">:</span>
+                        <input class="score-led" type="number" min="0" max="20" placeholder="–"
+                          :value="m.result.away"
+                          @input="setMatchResult(m.id, 'away', $event.target.value)" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Footer: joker + result pts -->
+                  <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed ' + C.border }">
+                    <button v-if="canEditProno"
+                      :style="{ background: isJokerMatch(activeParticipant, m.id) ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'transparent', color: isJokerMatch(activeParticipant, m.id) ? '#0a0e1a' : '#94a3b8', border: '1px solid ' + (isJokerMatch(activeParticipant, m.id) ? '#f59e0b' : C.border), borderRadius: '999px', padding: '5px 12px', cursor: 'pointer', fontFamily: 'Anton, sans-serif', fontSize: '11px', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '4px' }"
+                      @click="toggleJoker(activeParticipant, m.id)">
+                      🃏 {{ isJokerMatch(activeParticipant, m.id) ? 'RETIRER JOKER' : 'POSER LE JOKER' }}
+                    </button>
+                    <div v-else></div>
+                    <div v-if="m.result.home !== '' && m.result.away !== ''" style="display: flex; align-items: center; gap: 8px">
+                      <span v-if="getMatchPts(activeParticipant, m.id) === 3" style="font-size: 18px">🎯</span>
+                      <span v-else-if="getMatchPts(activeParticipant, m.id) === 1" style="font-size: 16px">✅</span>
+                      <span v-else style="font-size: 16px; opacity: 0.6">❌</span>
+                      <span class="anton" :style="{ fontSize: '18px', color: ptColor(getMatchPts(activeParticipant, m.id), true) }">
+                        +{{ isJokerMatch(activeParticipant, m.id) ? getMatchPts(activeParticipant, m.id) * 2 : getMatchPts(activeParticipant, m.id) }} pts
+                      </span>
+                      <span v-if="isJokerMatch(activeParticipant, m.id) && getMatchPts(activeParticipant, m.id) > 0" style="font-size: 11px; color: #f59e0b; font-family: Anton, sans-serif">({{ getMatchPts(activeParticipant, m.id) }}×2)</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -642,81 +919,180 @@
 
             <!-- TAB 2 — Bonus -->
             <div v-if="tab === 2">
-              <div :style="{ color: C.muted, fontSize: '13px', marginBottom: '14px' }">
-                Pronostics à rendre avant le coup d'envoi du tournoi. Chaque participant ne peut modifier que ses propres pronostics.
+              <div :style="{ ...sCard, marginBottom: '14px', background: '#0a0e1a', border: '1px solid #1e293b', display: 'flex', gap: '12px', alignItems: 'center' }">
+                <div style="font-size: 28px; flex-shrink: 0">🎯</div>
+                <div>
+                  <div class="anton" style="font-size: 14px; color: #fbbf24; letter-spacing: 1px; margin-bottom: 2px">PRONOSTICS BONUS</div>
+                  <div :style="{ fontSize: '11px', color: C.muted, lineHeight: 1.5 }">À rendre avant le coup d'envoi. Saisissez les prédictions de chaque joueur, puis entrez les vrais résultats.</div>
+                </div>
               </div>
-              <div v-for="b in BONUS_TYPES" :key="b.id" :style="sCard">
-                <div style="font-weight: 700; font-size: 14px; margin-bottom: 4px">{{ b.label }}</div>
-                <div :style="{ ...badgeStyle(C.gold), display: 'inline-block', marginBottom: '12px' }">+{{ b.points }} pts</div>
-                <template v-for="i in b.count" :key="i">
-                  <div :style="{ marginBottom: b.count > 1 ? '12px' : '0' }">
-                    <div v-if="b.count > 1" :style="{ ...sLabel, marginBottom: '6px' }">#{{ i }}</div>
-                    <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px">
-                      <div :style="{ fontSize: '12px', color: C.green, fontWeight: 700, width: '70px', flexShrink: 0 }">✅ Résultat</div>
-                      <input :style="sInput" placeholder="Résultat réel…"
-                        :value="bonusResults[b.id + '_' + (i - 1)] || ''"
-                        @input="setBonusResult(b.id, i - 1, $event.target.value)" />
-                    </div>
-                    <div v-for="p in participants" :key="p.id" style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px">
-                      <div :style="{ width: '8px', height: '8px', borderRadius: '50%', background: p.color, flexShrink: 0 }"></div>
-                      <div :style="{ fontSize: '12px', fontWeight: 600, width: '70px', flexShrink: 0, color: C.text }">{{ p.name }}</div>
-                      <input
-                        :style="{ ...sInput, borderColor: isBonusCorrect(p.id, b.id + '_' + (i - 1)) ? C.green : C.border, opacity: isMe(p.id) ? 1 : 0.6 }"
-                        :placeholder="isMe(p.id) ? 'Mon pronostic…' : '—'"
-                        :disabled="!isMe(p.id)"
-                        :value="getBonusProno(p.id, b.id + '_' + (i - 1))"
-                        @input="setBonus(p.id, b.id, i - 1, $event.target.value)" />
-                      <span v-if="isBonusCorrect(p.id, b.id + '_' + (i - 1))" :style="{ color: C.green, fontWeight: 700, fontSize: '12px', flexShrink: 0 }">+{{ b.points }}pts</span>
+
+              <div v-for="b in BONUS_TYPES" :key="b.id" class="card-rel" :style="{ ...sCard, padding: '0', overflow: 'hidden' }">
+                <!-- Bonus header -->
+                <div class="bonus-header" :style="{ background: getBonusIcon(b.id).bg }">
+                  <div class="bonus-icon-box" style="background: rgba(255,255,255,0.18)">{{ getBonusIcon(b.id).icon }}</div>
+                  <div style="flex: 1; min-width: 0">
+                    <div class="anton" style="font-size: 15px; color: #fff; letter-spacing: 0.8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ b.label }}</div>
+                    <div style="font-size: 10px; color: rgba(255,255,255,0.85); margin-top: 2px; letter-spacing: 1px">
+                      {{ b.count > 1 ? b.count + ' prédictions' : '1 prédiction' }} · récompense par bonne réponse
                     </div>
                   </div>
-                </template>
+                  <div style="background: rgba(0,0,0,0.3); padding: 4px 10px; border-radius: 999px; font-family: Anton, sans-serif; font-size: 13px; color: #fff; letter-spacing: 1px; flex-shrink: 0">
+                    +{{ b.points }} PTS
+                  </div>
+                </div>
+
+                <div style="padding: 0 14px 14px">
+                  <template v-for="i in b.count" :key="i">
+                    <div :style="{ marginBottom: b.count > 1 && i < b.count ? '16px' : '0', padding: b.count > 1 ? '10px' : '0', background: b.count > 1 ? 'rgba(15,23,42,0.5)' : 'transparent', borderRadius: b.count > 1 ? '8px' : '0', border: b.count > 1 ? '1px solid ' + C.border : 'none', marginTop: b.count > 1 ? '10px' : '10px' }">
+                      <div v-if="b.count > 1" class="anton" :style="{ fontSize: '11px', color: C.muted, letterSpacing: '1.5px', marginBottom: '8px' }">★ #{{ i }}</div>
+                      <!-- Result input -->
+                      <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px">
+                        <div style="display: flex; align-items: center; gap: 6px; width: 90px; flex-shrink: 0">
+                          <span :style="{ width: '8px', height: '8px', borderRadius: '50%', background: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e' : C.muted }"></span>
+                          <span :style="{ fontSize: '10px', color: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e' : C.muted, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }">Résultat</span>
+                        </div>
+                        <input :style="{ ...sInput, borderColor: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e66' : C.border }"
+                          placeholder="À renseigner..."
+                          :value="bonusResults[b.id + '_' + (i - 1)] || ''"
+                          @input="setBonusResult(b.id, i - 1, $event.target.value)" />
+                      </div>
+                      <!-- Participant rows -->
+                      <div v-for="p in participants" :key="p.id" style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px">
+                        <div style="display: flex; align-items: center; gap: 6px; width: 90px; flex-shrink: 0">
+                          <div :style="{ width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, ' + p.color + ', ' + p.color + 'cc)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 700, fontFamily: 'Anton, sans-serif', flexShrink: 0 }">{{ initials(p.name) }}</div>
+                          <span :style="{ fontSize: '11px', fontWeight: 600, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }">{{ p.name }}</span>
+                        </div>
+                        <input
+                          :style="{ ...sInput, borderColor: isBonusCorrect(p.id, b.id + '_' + (i - 1)) ? '#22c55e' : isBonusWrong(p.id, b.id + '_' + (i - 1)) ? '#ef444466' : C.border, background: isBonusCorrect(p.id, b.id + '_' + (i - 1)) ? 'rgba(34,197,94,0.08)' : '#1e293b', opacity: isMe(p.id) ? 1 : 0.6 }"
+                          :placeholder="isMe(p.id) ? 'Mon pronostic...' : '—'"
+                          :disabled="!isMe(p.id)"
+                          :value="getBonusProno(p.id, b.id + '_' + (i - 1))"
+                          @input="setBonus(p.id, b.id, i - 1, $event.target.value)" />
+                        <span v-if="isBonusCorrect(p.id, b.id + '_' + (i - 1))" style="color: #22c55e; font-weight: 800; font-size: 12px; flex-shrink: 0; font-family: Anton, sans-serif; letter-spacing: 0.5px">+{{ b.points }}</span>
+                        <span v-else-if="isBonusWrong(p.id, b.id + '_' + (i - 1))" style="color: #ef4444; font-size: 14px; flex-shrink: 0">✕</span>
+                      </div>
+                    </div>
+                  </template>
+                </div>
               </div>
             </div>
 
             <!-- TAB 3 — Classement -->
             <div v-if="tab === 3">
-              <div :style="{ ...sCard, background: 'linear-gradient(135deg, #1e1b4b, #0f172a)', marginBottom: '16px', textAlign: 'center', padding: '20px 16px' }">
-                <div :style="{ fontSize: '11px', color: C.muted, fontWeight: 700, letterSpacing: '2px', marginBottom: '4px' }">CLASSEMENT GÉNÉRAL</div>
-                <div :style="{ fontSize: '12px', color: C.muted }">Mis à jour en temps réel · partagé avec tous</div>
+              <!-- Banner -->
+              <div class="card-rel" :style="{ ...sCard, background: 'linear-gradient(135deg, #1e3a8a 0%, #7f1d1d 100%)', marginBottom: '16px', textAlign: 'center', padding: '22px 16px', border: '1px solid #f59e0b66' }">
+                <div style="position: absolute; top: -10px; left: -10px; font-size: 60px; opacity: 0.12">★</div>
+                <div style="position: absolute; bottom: -20px; right: -10px; font-size: 80px; opacity: 0.10">🏆</div>
+                <div style="font-size: 36px; line-height: 1; margin-bottom: 6px">🏆</div>
+                <div class="anton" style="font-size: 22px; color: #fbbf24; letter-spacing: 2px; margin-bottom: 4px">CLASSEMENT GÉNÉRAL</div>
+                <div style="font-size: 11px; color: #fef3c7; letter-spacing: 1px">★ Mis à jour en direct · partagé avec tous ★</div>
               </div>
-              <div v-if="rankings.length === 0" :style="{ color: C.muted, textAlign: 'center', padding: '40px' }">Aucun participant.</div>
-              <div v-for="(p, i) in rankings" :key="p.id" :style="{ ...sCard, display: 'flex', alignItems: 'center', gap: '14px', background: i === 0 ? 'linear-gradient(135deg, #1c1507, #1a0f00)' : C.card, border: '1px solid ' + (i === 0 ? '#f59e0b44' : C.border) }">
-                <div style="font-size: 26px; width: 36px; text-align: center">{{ medalIcons[i] || ('#' + (i + 1)) }}</div>
-                <div :style="{ width: '10px', height: '10px', borderRadius: '50%', background: p.color, flexShrink: 0 }"></div>
-                <div style="flex: 1">
-                  <div style="display: flex; align-items: center; gap: 8px">
-                    <span style="font-weight: 800; font-size: 15px">{{ p.name }}</span>
-                    <span v-if="isMe(p.id)" :style="{ fontSize: '10px', color: C.accent, fontWeight: 700, background: C.accent + '18', border: '1px solid ' + C.accent + '33', borderRadius: '4px', padding: '1px 5px' }">Moi</span>
+
+              <div v-if="rankings.length === 0" :style="{ ...sCard, color: C.muted, textAlign: 'center', padding: '40px' }">
+                <div style="font-size: 32px; margin-bottom: 6px">🥁</div>
+                Pas encore de participants.
+              </div>
+
+              <!-- Podium -->
+              <div v-if="rankings.length >= 2">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px">
+                  <div class="ribbon" style="background: linear-gradient(180deg, #f59e0b, #b45309)">PODIUM</div>
+                  <div :style="{ fontSize: '11px', color: C.muted }">The Goats</div>
+                </div>
+                <div class="podium">
+                  <!-- 2nd -->
+                  <div v-if="rankings[1]">
+                    <div class="podium-step silver" style="height: 110px">
+                      <div class="avatar-disc" :style="{ background: 'linear-gradient(135deg, ' + rankings[1].color + ', ' + rankings[1].color + 'cc)', margin: '0 auto 6px' }">{{ initials(rankings[1].name) }}</div>
+                      <div class="medal">🥈</div>
+                      <div class="p-name">{{ rankings[1].name }}</div>
+                      <div class="pts" style="color: #cbd5e1">{{ rankings[1].total }}</div>
+                      <div class="lbl">pts</div>
+                    </div>
+                    <div class="podium-base">2</div>
                   </div>
-                  <div :style="{ fontSize: '12px', color: C.muted, marginTop: '2px' }">🎯 {{ p.exactCount }} score{{ p.exactCount > 1 ? 's' : '' }} exact{{ p.exactCount > 1 ? 's' : '' }}</div>
-                </div>
-                <div style="text-align: right">
-                  <div :style="{ fontSize: '26px', fontWeight: 800, color: medalColors[i] || C.text }">{{ p.total }}</div>
-                  <div :style="{ fontSize: '11px', color: C.muted }">points</div>
+                  <div v-else></div>
+
+                  <!-- 1st -->
+                  <div>
+                    <div class="podium-step gold" style="height: 140px">
+                      <div style="position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font-size: 26px">👑</div>
+                      <div class="avatar-disc" :style="{ background: 'linear-gradient(135deg, ' + rankings[0].color + ', ' + rankings[0].color + 'cc)', margin: '0 auto 6px', width: '44px', height: '44px', fontSize: '18px' }">{{ initials(rankings[0].name) }}</div>
+                      <div class="medal">🥇</div>
+                      <div class="p-name" style="font-size: 16px">{{ rankings[0].name }}</div>
+                      <div class="pts" style="font-size: 30px; color: #fbbf24">{{ rankings[0].total }}</div>
+                      <div class="lbl">points</div>
+                    </div>
+                    <div class="podium-base" style="background: linear-gradient(180deg, #78350f, #451a03); border-color: #f59e0b; color: #fbbf24">1</div>
+                  </div>
+
+                  <!-- 3rd -->
+                  <div v-if="rankings[2]">
+                    <div class="podium-step bronze" style="height: 90px">
+                      <div class="avatar-disc" :style="{ background: 'linear-gradient(135deg, ' + rankings[2].color + ', ' + rankings[2].color + 'cc)', margin: '0 auto 4px', width: '32px', height: '32px', fontSize: '13px' }">{{ initials(rankings[2].name) }}</div>
+                      <div class="medal" style="font-size: 20px">🥉</div>
+                      <div class="p-name">{{ rankings[2].name }}</div>
+                      <div class="pts" style="font-size: 20px; color: #fb923c">{{ rankings[2].total }}</div>
+                      <div class="lbl">pts</div>
+                    </div>
+                    <div class="podium-base">3</div>
+                  </div>
+                  <div v-else></div>
                 </div>
               </div>
-              <div v-if="rankings.length > 1" :style="{ ...sCard, marginTop: '16px', background: '#0f172a' }">
-                <div :style="{ fontSize: '13px', fontWeight: 700, color: C.accent, marginBottom: '10px' }">📊 Détail par participant</div>
+
+              <!-- Solo leader -->
+              <div v-if="rankings.length === 1" class="card-rel" :style="{ ...sCard, background: 'linear-gradient(135deg, #78350f, #1c1507)', border: '1px solid #f59e0b66', padding: '20px', textAlign: 'center' }">
+                <div style="font-size: 36px; margin-bottom: 4px">👑</div>
+                <div class="anton" style="font-size: 18px; color: #fff; margin-bottom: 4px">{{ rankings[0].name }}</div>
+                <div class="anton" style="font-size: 36px; color: #fbbf24; line-height: 1">{{ rankings[0].total }}</div>
+                <div :style="{ fontSize: '10px', color: C.muted, letterSpacing: '1.5px', marginTop: '4px' }">POINTS · GOAT SOLO</div>
+              </div>
+
+              <!-- Positions 4+ -->
+              <div v-if="rankings.length > 3" style="margin-top: 8px">
+                <div :style="sLabel">★ Autres positions</div>
+                <div v-for="(p, i) in rankings.slice(3)" :key="p.id" class="card-rel" :style="{ ...sCard, display: 'flex', alignItems: 'center', gap: '12px', padding: '10px' }">
+                  <div class="anton" :style="{ fontSize: '18px', width: '30px', textAlign: 'center', color: C.muted }">#{{ i + 4 }}</div>
+                  <div class="avatar-disc" :style="{ background: 'linear-gradient(135deg, ' + p.color + ', ' + p.color + 'cc)', width: '30px', height: '30px', fontSize: '12px' }">{{ initials(p.name) }}</div>
+                  <div style="flex: 1">
+                    <div class="anton" :style="{ fontSize: '14px', color: C.text }">{{ p.name }}</div>
+                    <div :style="{ fontSize: '10px', color: C.muted, marginTop: '2px' }">🎯 {{ p.exactCount }} exact{{ p.exactCount > 1 ? 's' : '' }}</div>
+                  </div>
+                  <div style="text-align: right">
+                    <div class="anton" :style="{ fontSize: '20px', color: C.text, lineHeight: 1 }">{{ p.total }}</div>
+                    <div :style="{ fontSize: '9px', color: C.muted, letterSpacing: '1px' }">PTS</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Stats table -->
+              <div v-if="rankings.length > 1" :style="{ ...sCard, marginTop: '16px', background: '#0a0e1a', border: '1px solid #1e293b' }">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px">
+                  <div class="ribbon" style="background: linear-gradient(180deg, #1e3a8a, #1e293b)">STATS</div>
+                  <div :style="{ fontSize: '11px', color: C.muted }">détail par joueur</div>
+                </div>
                 <table style="width: 100%; border-collapse: collapse; font-size: 12px">
                   <thead>
                     <tr :style="{ color: C.muted }">
-                      <th style="text-align: left; padding: 4px 6px; font-weight: 600">Participant</th>
-                      <th style="text-align: center; padding: 4px 6px; font-weight: 600">Matchs joués</th>
-                      <th style="text-align: center; padding: 4px 6px; font-weight: 600">Exacts</th>
-                      <th style="text-align: center; padding: 4px 6px; font-weight: 600">Bonus</th>
-                      <th style="text-align: right; padding: 4px 6px; font-weight: 600">Total</th>
+                      <th style="text-align: left; padding: 6px; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase">Joueur</th>
+                      <th style="text-align: center; padding: 6px; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase">Joués</th>
+                      <th style="text-align: center; padding: 6px; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase">🎯</th>
+                      <th style="text-align: center; padding: 6px; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase">Bonus</th>
+                      <th style="text-align: right; padding: 6px; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase">Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-for="(p, i) in rankings" :key="p.id" :style="{ borderTop: '1px solid ' + C.border }">
-                      <td style="padding: 7px 6px; font-weight: 700">
+                      <td style="padding: 8px 6px; font-weight: 700; font-family: Anton, sans-serif; letter-spacing: 0.5px">
                         <span :style="{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: p.color, marginRight: '6px' }"></span>
                         {{ p.name }}
                       </td>
-                      <td :style="{ textAlign: 'center', padding: '7px 6px', color: C.muted }">{{ matchesPlayedCount() }}</td>
-                      <td :style="{ textAlign: 'center', padding: '7px 6px', color: C.green }">{{ p.exactCount }}</td>
-                      <td :style="{ textAlign: 'center', padding: '7px 6px', color: C.gold }">{{ (p.total - matchPtsForRanking(p.id)) > 0 ? '+' + (p.total - matchPtsForRanking(p.id)) : '–' }}</td>
-                      <td :style="{ textAlign: 'right', padding: '7px 6px', fontWeight: 800, color: medalColors[i] || C.text }">{{ p.total }}</td>
+                      <td :style="{ textAlign: 'center', padding: '8px 6px', color: C.muted }">{{ matchesPlayedCount() }}</td>
+                      <td :style="{ textAlign: 'center', padding: '8px 6px', color: C.green, fontWeight: 700 }">{{ p.exactCount }}</td>
+                      <td :style="{ textAlign: 'center', padding: '8px 6px', color: C.gold, fontWeight: 700 }">{{ (p.total - matchPtsForRanking(p.id)) > 0 ? '+' + (p.total - matchPtsForRanking(p.id)) : '–' }}</td>
+                      <td :style="{ textAlign: 'right', padding: '8px 6px', fontFamily: 'Anton, sans-serif', fontSize: '14px', color: medalColors[i] || C.text }">{{ p.total }}</td>
                     </tr>
                   </tbody>
                 </table>
