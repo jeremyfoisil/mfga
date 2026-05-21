@@ -676,6 +676,7 @@
 
         // ── Data loading ──────────────────────────────────────────────────────
         async function loadData(userId) {
+          try {
           let { data: prof } = await sb.from("profiles").select("*").eq("id", userId).single();
           if (!prof) {
             await new Promise(r => setTimeout(r, 900));
@@ -752,13 +753,16 @@
               if (eventType === "INSERT" || eventType === "UPDATE") bonusPronostics.value = { ...bonusPronostics.value, [p.participant_id]: { ...bonusPronostics.value[p.participant_id], [p.bonus_key]: p.value } };
             })
             .subscribe(status => { rtStatus.value = status === "SUBSCRIBED" ? "connected" : "connecting"; });
+          } catch (e) {
+            authError.value = "Erreur de chargement — vérifie ta connexion et recharge la page.";
+          }
         }
 
         // ── Session listener ──────────────────────────────────────────────────
         onMounted(() => {
           sb.auth.onAuthStateChange(async (event, newSession) => {
             session.value = newSession;
-            if (newSession && (event === "SIGNED_IN" || event === "INITIAL_SESSION") && !loaded.value) {
+            if (newSession && !loaded.value) {
               await loadData(newSession.user.id);
             } else if (event === "SIGNED_OUT") {
               loaded.value = false;
