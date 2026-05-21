@@ -387,6 +387,21 @@
       "Italie":             "linear-gradient(90deg, #008c45 33%, #ffffff 33% 66%, #cd212a 66%)",
     };
 
+    const TEAM_EN_FR = {
+      "Mexico": "Mexique", "South Africa": "Afrique du Sud", "South Korea": "Corée du Sud", "Czech Republic": "Rép. tchèque",
+      "Canada": "Canada", "Bosnia & Herzegovina": "Bosnie-Herzégovine", "Qatar": "Qatar", "Switzerland": "Suisse",
+      "Brazil": "Brésil", "Morocco": "Maroc", "Haiti": "Haïti", "Scotland": "Écosse",
+      "USA": "États-Unis", "Paraguay": "Paraguay", "Australia": "Australie", "Turkey": "Turquie",
+      "Germany": "Allemagne", "Curaçao": "Curaçao", "Ivory Coast": "Côte d'Ivoire", "Ecuador": "Équateur",
+      "Netherlands": "Pays-Bas", "Japan": "Japon", "Sweden": "Suède", "Tunisia": "Tunisie",
+      "Belgium": "Belgique", "Egypt": "Égypte", "Iran": "Iran", "New Zealand": "Nouvelle-Zélande",
+      "Spain": "Espagne", "Cape Verde": "Cap-Vert", "Saudi Arabia": "Arabie Saoudite", "Uruguay": "Uruguay",
+      "France": "France", "Senegal": "Sénégal", "Iraq": "Irak", "Norway": "Norvège",
+      "Argentina": "Argentine", "Algeria": "Algérie", "Austria": "Autriche", "Jordan": "Jordanie",
+      "Portugal": "Portugal", "DR Congo": "RD Congo", "Uzbekistan": "Ouzbékistan", "Colombia": "Colombie",
+      "England": "Angleterre", "Croatia": "Croatie", "Ghana": "Ghana", "Panama": "Panama",
+    };
+
     function getFlagBg(name) {
       return FLAG_COLORS[name] || "linear-gradient(135deg, #475569, #1e293b)";
     }
@@ -532,6 +547,35 @@
         }
         function exitAdmin() { isAdmin.value = false; }
 
+        // ── Import JSON ───────────────────────────────────────────────────────
+        const showImportModal = ref(false);
+        const importJsonText  = ref("");
+        const importStatus    = ref("");
+        const importLoading   = ref(false);
+
+        // ── Time-based lock ───────────────────────────────────────────────────
+        const now = ref(Date.now());
+        setInterval(() => { now.value = Date.now(); }, 30000);
+
+        function matchStartsAtMs(m) {
+          if (!m.matchDate || !m.matchTime) return Infinity;
+          const re = /(\d{1,2}):(\d{2})\s*UTC([+-]\d+)/;
+          const found = m.matchTime.match(re);
+          if (!found) return Infinity;
+          const utcOffset = parseInt(found[3]);
+          const utcH = parseInt(found[1]) - utcOffset;
+          const d = new Date(m.matchDate + "T00:00:00Z");
+          d.setUTCHours(utcH, parseInt(found[2]), 0, 0);
+          return d.getTime();
+        }
+        function hasMatchStarted(m) { return now.value >= matchStartsAtMs(m); }
+        function canEditMatchProno(matchId) {
+          if (!canEditProno.value) return false;
+          if (isAdmin.value) return true;
+          const m = matches.value.find(x => x.id === matchId);
+          return !m || !hasMatchStarted(m);
+        }
+
         const writeTimers = {};
         let realtimeChannel = null;
 
@@ -665,6 +709,7 @@
 
         function setProno(pid, matchId, side, val) {
           if (!isMe(pid)) return;
+          if (!canEditMatchProno(matchId)) return;
           const cur = pronostics.value;
           pronostics.value = { ...cur, [pid]: { ...cur[pid], [matchId]: { ...(cur[pid]?.[matchId] || {}), [side]: val } } };
           debounce("prono_" + pid + "_" + matchId, async () => {
@@ -691,8 +736,53 @@
           });
         }
 
+        async function importJson() {
+          importLoading.value = true; importStatus.value = "";
+          try {
+            const data = JSON.parse(importJsonText.value);
+            if (!data.matches) throw new Error("Champ 'matches' manquant");
+            const pairMap = {};
+            matches.value.forEach(m => { pairMap[[m.home, m.away].sort().join("|")] = m; });
+            const upserts = [];
+            for (const jm of data.matches) {
+              if (jm.num && jm.num > 72) continue;
+              if (!jm.team1 || !jm.team2) continue;
+              const frHome = TEAM_EN_FR[jm.team1] || jm.team1;
+              const frAway = TEAM_EN_FR[jm.team2] || jm.team2;
+              const m = pairMap[[frHome, frAway].sort().join("|")];
+              if (!m) continue;
+              const flipped = m.home !== frHome;
+              const row = { match_id: m.id, match_date: jm.date || null, match_time: jm.time || null, venue: jm.ground || null, round: jm.round || null,
+                result_home: m.result.home !== "" ? parseInt(m.result.home) : null,
+                result_away: m.result.away !== "" ? parseInt(m.result.away) : null,
+                goals_home: m.result.goalsHome || [], goals_away: m.result.goalsAway || [] };
+              if (jm.score?.ft) {
+                const [s1, s2] = jm.score.ft;
+                row.result_home = flipped ? s2 : s1; row.result_away = flipped ? s1 : s2;
+              }
+              if (jm.goals1 || jm.goals2) {
+                const mapG = gs => (gs || []).map(g => ({ name: g.name, minute: g.minute, ...(g.penalty ? { penalty: true } : {}), ...(g.owngoal ? { owngoal: true } : {}) }));
+                row.goals_home = flipped ? mapG(jm.goals2) : mapG(jm.goals1);
+                row.goals_away = flipped ? mapG(jm.goals1) : mapG(jm.goals2);
+              }
+              upserts.push(row);
+            }
+            if (!upserts.length) throw new Error("Aucun match reconnu");
+            for (let i = 0; i < upserts.length; i += 20) {
+              const { error } = await sb.from("match_results").upsert(upserts.slice(i, i + 20), { onConflict: "match_id" });
+              if (error) throw error;
+            }
+            const withScore = upserts.filter(u => u.result_home !== null).length;
+            importStatus.value = `✓ ${upserts.length} matchs mis à jour (${withScore} avec score)`;
+            await loadData(session.value.user.id);
+            setTimeout(() => { showImportModal.value = false; importStatus.value = ""; importJsonText.value = ""; }, 2000);
+          } catch(e) { importStatus.value = "✗ " + e.message; }
+          finally { importLoading.value = false; }
+        }
+
         async function toggleJoker(pid, matchId) {
           if (!isMe(pid)) return;
+          if (!canEditMatchProno(matchId)) return;
           const isCurrentJoker = jokers.value[pid] === matchId;
           const oldJokerMatchId = jokers.value[pid];
           jokers.value = { ...jokers.value, [pid]: isCurrentJoker ? null : matchId };
@@ -758,9 +848,8 @@
           if (!prof) { authError.value = "Profil introuvable. Contactez l'administrateur."; return; }
           profile.value = prof;
 
-          const [{ data: pData }, { data: mData }, { data: mrData }, { data: prData }, { data: brData }, { data: bpData }] = await Promise.all([
+          const [{ data: pData }, { data: mrData }, { data: prData }, { data: brData }, { data: bpData }] = await Promise.all([
             sb.from("participants").select("*").order("id"),
-            sb.from("matches").select("*"),
             sb.from("match_results").select("*"),
             sb.from("pronostics").select("*"),
             sb.from("bonus_results").select("*"),
@@ -770,18 +859,16 @@
           participants.value = (pData || []).map(p => ({ id: p.id, name: p.name, color: p.color }));
           activeParticipant.value = prof.participant_id;
 
-          const matchesMap = {};
-          (mData || []).forEach(r => { matchesMap[r.id] = r; });
           const resultMap = {};
           (mrData || []).forEach(r => {
             const gh = r.goals_home || [], ga = r.goals_away || [];
-            resultMap[r.match_id] = { home: r.result_home !== null ? String(r.result_home) : "", away: r.result_away !== null ? String(r.result_away) : "", goalsHome: gh, goalsAway: ga, goalsHomeText: goalsToText(gh), goalsAwayText: goalsToText(ga) };
+            resultMap[r.match_id] = { home: r.result_home !== null ? String(r.result_home) : "", away: r.result_away !== null ? String(r.result_away) : "", goalsHome: gh, goalsAway: ga, goalsHomeText: goalsToText(gh), goalsAwayText: goalsToText(ga), matchDate: r.match_date || "", matchTime: r.match_time || "", venue: r.venue || "", round: r.round || "" };
           });
           matches.value = buildDefaultMatches().map(m => {
-            const md = matchesMap[m.id] || {};
+            const mr = resultMap[m.id] || {};
             return { ...m,
-              result: resultMap[m.id] || { home: "", away: "", goalsHome: [], goalsAway: [], goalsHomeText: "", goalsAwayText: "" },
-              matchDate: md.match_date || "", matchTime: md.match_time || "", venue: md.venue || "", round: md.round || "",
+              result: { home: mr.home || "", away: mr.away || "", goalsHome: mr.goalsHome || [], goalsAway: mr.goalsAway || [], goalsHomeText: mr.goalsHomeText || "", goalsAwayText: mr.goalsAwayText || "" },
+              matchDate: mr.matchDate || "", matchTime: mr.matchTime || "", venue: mr.venue || "", round: mr.round || "",
             };
           });
 
@@ -815,7 +902,9 @@
               if (eventType === "INSERT" || eventType === "UPDATE") {
                 const gh = r.goals_home || [], ga = r.goals_away || [];
                 matches.value = matches.value.map(m => m.id === r.match_id ? { ...m,
-                  result: { home: r.result_home !== null ? String(r.result_home) : "", away: r.result_away !== null ? String(r.result_away) : "", goalsHome: gh, goalsAway: ga, goalsHomeText: goalsToText(gh), goalsAwayText: goalsToText(ga) }
+                  result: { home: r.result_home !== null ? String(r.result_home) : "", away: r.result_away !== null ? String(r.result_away) : "", goalsHome: gh, goalsAway: ga, goalsHomeText: goalsToText(gh), goalsAwayText: goalsToText(ga) },
+                  matchDate: r.match_date || m.matchDate, matchTime: r.match_time || m.matchTime,
+                  venue: r.venue || m.venue, round: r.round || m.round,
                 } : m);
               }
             })
@@ -869,6 +958,8 @@
           myParticipantId, canEditProno, canEditResult, canEditBonusResult, isMe,
           isAdmin, showAdminModal, adminPassInput, adminPassError,
           openAdminModal, closeAdminModal, submitAdminPass, exitAdmin,
+          showImportModal, importJsonText, importStatus, importLoading, importJson,
+          canEditMatchProno, hasMatchStarted,
           GROUPS, BONUS_TYPES, TABS, C, medalColors, medalIcons,
           rtColor, groupMatches, rankings,
           sCard, sInput, sLabel,
@@ -990,6 +1081,7 @@
                   <span :style="{ fontSize: '12px', color: C.muted }">👤 {{ profile && profile.username }}</span>
                   <template v-if="isAdmin">
                     <span style="background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.35); border-radius: 6px; padding: 3px 8px; font-size: 10px; font-family: Anton, sans-serif; letter-spacing: 1px">⚙ ADMIN</span>
+                    <button @click="showImportModal = true" style="background: #1e3a8a; color: #93c5fd; border: 1px solid rgba(59,130,246,0.35); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-family: Syne, sans-serif; font-size: 11px">📥 JSON</button>
                     <button @click="exitAdmin" style="background: #7f1d1d; color: #fca5a5; border: 1px solid rgba(220,38,38,0.35); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-family: Syne, sans-serif; font-size: 11px">Exit</button>
                   </template>
                   <button v-else @click="openAdminModal" style="background: #1e293b; color: #64748b; border: 1px solid #334155; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-family: Syne, sans-serif; font-size: 11px">Admin</button>
@@ -1170,17 +1262,18 @@
                       <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px">
                         <span :style="{ width: '6px', height: '6px', borderRadius: '50%', background: activeParticipantColor() }"></span>
                         <span :style="{ fontSize: '9px', color: activeParticipantColor(), fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase' }">{{ activeParticipantName() || 'Pronostic' }}</span>
+                        <span v-if="canEditProno && !canEditMatchProno(m.id)" style="font-size: 9px; color: #ef4444; margin-left: 2px" title="Match débuté">🔒</span>
                       </div>
                       <div style="display: flex; align-items: center; gap: 6px; justify-content: center">
                         <input class="score-led" type="number" min="0" max="20" placeholder="–"
-                          :style="{ opacity: canEditProno ? 1 : 0.5 }"
-                          :disabled="!canEditProno"
+                          :style="{ opacity: canEditMatchProno(m.id) ? 1 : 0.5 }"
+                          :disabled="!canEditMatchProno(m.id)"
                           :value="getProno(activeParticipant, m.id).home ?? ''"
                           @input="setProno(activeParticipant, m.id, 'home', $event.target.value)" />
                         <span style="color: #475569; font-weight: 700; font-size: 22px; font-family: Anton, sans-serif">:</span>
                         <input class="score-led" type="number" min="0" max="20" placeholder="–"
-                          :style="{ opacity: canEditProno ? 1 : 0.5 }"
-                          :disabled="!canEditProno"
+                          :style="{ opacity: canEditMatchProno(m.id) ? 1 : 0.5 }"
+                          :disabled="!canEditMatchProno(m.id)"
                           :value="getProno(activeParticipant, m.id).away ?? ''"
                           @input="setProno(activeParticipant, m.id, 'away', $event.target.value)" />
                       </div>
@@ -1254,7 +1347,7 @@ Giroud, 45'
 
                   <!-- Footer: joker + result pts -->
                   <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed ' + C.border }">
-                    <button v-if="canEditProno"
+                    <button v-if="canEditMatchProno(m.id)"
                       :style="{ background: isJokerMatch(activeParticipant, m.id) ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'transparent', color: isJokerMatch(activeParticipant, m.id) ? '#0a0e1a' : '#94a3b8', border: '1px solid ' + (isJokerMatch(activeParticipant, m.id) ? '#f59e0b' : C.border), borderRadius: '999px', padding: '5px 12px', cursor: 'pointer', fontFamily: 'Anton, sans-serif', fontSize: '11px', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '4px' }"
                       @click="toggleJoker(activeParticipant, m.id)">
                       🃏 {{ isJokerMatch(activeParticipant, m.id) ? 'RETIRER JOKER' : 'POSER LE JOKER' }}
@@ -1476,6 +1569,24 @@ Giroud, 45'
               <div style="display: flex; gap: 8px; margin-top: 4px">
                 <button @click="closeAdminModal" style="flex: 1; background: #1e293b; color: #94a3b8; border: 1px solid #334155; border-radius: 8px; padding: 9px; cursor: pointer; font-family: Syne, sans-serif; font-size: 13px; font-weight: 600">Annuler</button>
                 <button @click="submitAdminPass" style="flex: 1; background: #dc2626; color: #fff; border: none; border-radius: 8px; padding: 9px; cursor: pointer; font-family: Anton, sans-serif; font-size: 13px; letter-spacing: 1px">ENTRER</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Import JSON modal -->
+          <div v-if="showImportModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px" @click.self="showImportModal = false; importStatus = ''">
+            <div style="background: #111827; border: 1px solid #1e3a8a; border-radius: 14px; padding: 24px; width: 100%; max-width: 520px; max-height: 85vh; overflow-y: auto">
+              <div class="anton" style="font-size: 16px; color: #93c5fd; letter-spacing: 1.5px; margin-bottom: 4px">📥 IMPORTER JSON</div>
+              <div style="font-size: 11px; color: #64748b; margin-bottom: 14px">Collez le contenu du fichier worldcup.json pour mettre à jour les dates, stades et résultats</div>
+              <textarea
+                :style="{ ...sInput, minHeight: '180px', resize: 'vertical', fontFamily: 'monospace', fontSize: '11px', lineHeight: '1.4', marginBottom: '12px' }"
+                placeholder='{"name": "World Cup 2026", "matches": [...]}'
+                :value="importJsonText"
+                @input="importJsonText = $event.target.value"></textarea>
+              <div v-if="importStatus" :style="{ padding: '8px 12px', borderRadius: '6px', marginBottom: '12px', fontSize: '12px', background: importStatus.startsWith('✓') ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', color: importStatus.startsWith('✓') ? '#22c55e' : '#ef4444', border: '1px solid ' + (importStatus.startsWith('✓') ? '#22c55e33' : '#ef444433') }">{{ importStatus }}</div>
+              <div style="display: flex; gap: 8px">
+                <button @click="showImportModal = false; importJsonText = ''; importStatus = ''" style="flex: 1; background: #1e293b; color: #94a3b8; border: 1px solid #334155; border-radius: 8px; padding: 9px; cursor: pointer; font-family: Syne, sans-serif; font-size: 13px; font-weight: 600">Annuler</button>
+                <button @click="importJson" :disabled="importLoading || !importJsonText.trim()" :style="{ flex: 2, background: importLoading ? '#334155' : '#1e3a8a', color: '#fff', border: 'none', borderRadius: '8px', padding: '9px', cursor: (importLoading || !importJsonText.trim()) ? 'not-allowed' : 'pointer', fontFamily: 'Anton, sans-serif', fontSize: '13px', letterSpacing: '1px', opacity: !importJsonText.trim() ? 0.5 : 1 }">{{ importLoading ? '…Import en cours' : 'IMPORTER' }}</button>
               </div>
             </div>
           </div>
