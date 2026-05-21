@@ -496,12 +496,27 @@
         const activeGroup       = ref("A");
         const activeParticipant = ref(null);
 
+        // ── Admin ─────────────────────────────────────────────────────────────
+        const isAdmin        = ref(false);
+        const showAdminModal = ref(false);
+        const adminPassInput = ref("");
+        const adminPassError = ref("");
+        function openAdminModal()  { showAdminModal.value = true; adminPassInput.value = ""; adminPassError.value = ""; }
+        function closeAdminModal() { showAdminModal.value = false; }
+        function submitAdminPass() {
+          if (adminPassInput.value === "GOAT") { isAdmin.value = true; showAdminModal.value = false; }
+          else { adminPassError.value = "Mot de passe incorrect"; }
+        }
+        function exitAdmin() { isAdmin.value = false; }
+
         const writeTimers = {};
         let realtimeChannel = null;
 
         // ── Permissions ───────────────────────────────────────────────────────
-        const myParticipantId = computed(() => profile.value?.participant_id ?? null);
-        const canEditProno    = computed(() => activeParticipant.value !== null && activeParticipant.value === myParticipantId.value);
+        const myParticipantId    = computed(() => profile.value?.participant_id ?? null);
+        const canEditProno       = computed(() => isAdmin.value || (activeParticipant.value !== null && activeParticipant.value === myParticipantId.value));
+        const canEditResult      = computed(() => isAdmin.value);
+        const canEditBonusResult = computed(() => isAdmin.value);
         function isMe(pid) { return pid === myParticipantId.value; }
 
         // ── Computed ──────────────────────────────────────────────────────────
@@ -591,6 +606,26 @@
         }
 
         // ── Data actions ──────────────────────────────────────────────────────
+        function setMatchResult(matchId, side, val) {
+          matches.value = matches.value.map(m => m.id !== matchId ? m : { ...m, result: { ...m.result, [side]: val } });
+          debounce("mr_" + matchId, async () => {
+            const m = matches.value.find(x => x.id === matchId);
+            if (!m) return;
+            await sb.from("match_results").upsert({ match_id: matchId, result_home: m.result.home === "" ? null : parseInt(m.result.home), result_away: m.result.away === "" ? null : parseInt(m.result.away) }, { onConflict: "match_id" });
+            // Update score for all participants
+            if (m.result.home !== "" && m.result.away !== "") {
+              const updates = participants.value.map(p => {
+                const prono = pronostics.value[p.id]?.[matchId];
+                if (!prono || prono.home === "" || prono.away === "") return null;
+                const pts = calcMatchPoints(prono, m.result);
+                const score = jokers.value[p.id] === matchId ? pts * 2 : pts;
+                return sb.from("pronostics").update({ score }).eq("participant_id", p.id).eq("match_id", matchId);
+              }).filter(Boolean);
+              await Promise.all(updates);
+            }
+          });
+        }
+
         function setProno(pid, matchId, side, val) {
           if (!isMe(pid)) return;
           const cur = pronostics.value;
@@ -686,9 +721,10 @@
           if (!prof) { authError.value = "Profil introuvable. Contactez l'administrateur."; return; }
           profile.value = prof;
 
-          const [{ data: pData }, { data: mData }, { data: prData }, { data: brData }, { data: bpData }] = await Promise.all([
+          const [{ data: pData }, { data: mData }, { data: mrData }, { data: prData }, { data: brData }, { data: bpData }] = await Promise.all([
             sb.from("participants").select("*").order("id"),
             sb.from("matches").select("*"),
+            sb.from("match_results").select("*"),
             sb.from("pronostics").select("*"),
             sb.from("bonus_results").select("*"),
             sb.from("bonus_pronostics").select("*"),
@@ -699,10 +735,12 @@
 
           const matchesMap = {};
           (mData || []).forEach(r => { matchesMap[r.id] = r; });
+          const resultMap = {};
+          (mrData || []).forEach(r => { resultMap[r.match_id] = { home: r.result_home !== null ? String(r.result_home) : "", away: r.result_away !== null ? String(r.result_away) : "" }; });
           matches.value = buildDefaultMatches().map(m => {
             const md = matchesMap[m.id] || {};
             return { ...m,
-              result: { home: md.score_home !== null && md.score_home !== undefined ? String(md.score_home) : "", away: md.score_away !== null && md.score_away !== undefined ? String(md.score_away) : "" },
+              result: resultMap[m.id] || { home: "", away: "" },
               matchDate: md.match_date || "", matchTime: md.match_time || "", venue: md.venue || "", round: md.round || "",
             };
           });
@@ -733,11 +771,10 @@
               if (eventType === "INSERT") participants.value = participants.value.find(x => x.id === n.id) ? participants.value : [...participants.value, { id: n.id, name: n.name, color: n.color }];
               else if (eventType === "DELETE") participants.value = participants.value.filter(x => x.id !== o.id);
             })
-            .on("postgres_changes", { event: "*", schema: "public", table: "matches" }, ({ eventType, new: r }) => {
+            .on("postgres_changes", { event: "*", schema: "public", table: "match_results" }, ({ eventType, new: r }) => {
               if (eventType === "INSERT" || eventType === "UPDATE")
-                matches.value = matches.value.map(m => m.id === r.id ? { ...m,
-                  result: { home: r.score_home !== null && r.score_home !== undefined ? String(r.score_home) : "", away: r.score_away !== null && r.score_away !== undefined ? String(r.score_away) : "" },
-                  matchDate: r.match_date || m.matchDate, matchTime: r.match_time || m.matchTime, venue: r.venue || m.venue, round: r.round || m.round,
+                matches.value = matches.value.map(m => m.id === r.match_id ? { ...m,
+                  result: { home: r.result_home !== null ? String(r.result_home) : "", away: r.result_away !== null ? String(r.result_away) : "" }
                 } : m);
             })
             .on("postgres_changes", { event: "*", schema: "public", table: "pronostics" }, ({ eventType, new: p }) => {
@@ -787,12 +824,14 @@
           doRegister, doLogin, doLogout,
           loaded, saveMsg, rtStatus, tab, participants, matches, pronostics,
           bonusPronostics, bonusResults, jokers, activeGroup, activeParticipant,
-          myParticipantId, canEditProno, isMe,
+          myParticipantId, canEditProno, canEditResult, canEditBonusResult, isMe,
+          isAdmin, showAdminModal, adminPassInput, adminPassError,
+          openAdminModal, closeAdminModal, submitAdminPass, exitAdmin,
           GROUPS, BONUS_TYPES, TABS, C, medalColors, medalIcons,
           rtColor, groupMatches, rankings,
           sCard, sInput, sLabel,
           tabStyle, btnStyle, badgeStyle,
-          getFlag, calcScore, setProno, setBonus, setBonusResult, toggleJoker,
+          getFlag, calcScore, setMatchResult, setProno, setBonus, setBonusResult, toggleJoker,
           getProno, isJokerMatch, getMatchPts, ptColor, getBonusProno,
           isBonusCorrect, isBonusWrong, matchPtsForRanking, matchesPlayedCount, activeParticipantName, activeParticipantColor,
           getBonusIcon, initials, CONFETTI_BITS, BONUS_ICONS, formatDate,
@@ -907,6 +946,11 @@
                     {{ saveMsg ? 'Sauvegardé' : (rtStatus === 'connected' ? 'En direct' : 'Connexion...') }}
                   </div>
                   <span :style="{ fontSize: '12px', color: C.muted }">👤 {{ profile && profile.username }}</span>
+                  <template v-if="isAdmin">
+                    <span style="background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.35); border-radius: 6px; padding: 3px 8px; font-size: 10px; font-family: Anton, sans-serif; letter-spacing: 1px">⚙ ADMIN</span>
+                    <button @click="exitAdmin" style="background: #7f1d1d; color: #fca5a5; border: 1px solid rgba(220,38,38,0.35); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-family: Syne, sans-serif; font-size: 11px">Exit</button>
+                  </template>
+                  <button v-else @click="openAdminModal" style="background: #1e293b; color: #64748b; border: 1px solid #334155; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-family: Syne, sans-serif; font-size: 11px">Admin</button>
                   <button @click="doLogout" style="background: #1e293b; color: #94a3b8; border: 1px solid #334155; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-family: Syne, sans-serif; font-size: 11px">Déco</button>
                 </div>
               </div>
@@ -926,6 +970,11 @@
                   <div class="title-mfga">MAKE <span class="title-red">FOOTBALL</span></div>
                   <div class="title-mfga" style="margin-top: 2px">GOAT <span class="title-blue">AGAIN</span> <span style="font-size: 26px">🐐</span></div>
                   <div style="color: #fca5a5; font-size: 11px; font-weight: 600; margin-top: 4px; letter-spacing: 0.5px">★ Pronostics non-officiels · 100 % bipartisan ★</div>
+                </div>
+                <div style="flex-shrink: 0; max-width: 155px; align-self: center; border-left: 2px solid rgba(220,38,38,0.5); padding-left: 10px">
+                  <div style="font-size: 9.5px; color: #94a3b8; font-style: italic; line-height: 1.5; letter-spacing: 0.2px">
+                    « La compét' d'Infantino, bénie par Trump, gagné par les chèvres »
+                  </div>
                 </div>
               </div>
 
@@ -1094,17 +1143,28 @@
                           @input="setProno(activeParticipant, m.id, 'away', $event.target.value)" />
                       </div>
                     </div>
-                    <!-- Result panel (read-only) -->
-                    <div :style="{ background: '#0a0e1a', borderRadius: '10px', padding: '10px 8px', border: '1px solid ' + (m.result.home !== '' && m.result.away !== '' ? '#22c55e44' : C.border), position: 'relative' }">
+                    <!-- Result panel -->
+                    <div :style="{ background: '#0a0e1a', borderRadius: '10px', padding: '10px 8px', border: '1px solid ' + (m.result.home !== '' && m.result.away !== '' ? '#22c55e44' : (canEditResult ? '#fbbf2444' : C.border)), position: 'relative' }">
                       <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px">
                         <span :class="m.result.home !== '' && m.result.away !== '' ? 'live-dot' : ''"
-                          :style="{ width: '6px', height: '6px', borderRadius: '50%', background: m.result.home !== '' && m.result.away !== '' ? '#22c55e' : '#475569' }"></span>
-                        <span :style="{ fontSize: '9px', color: m.result.home !== '' && m.result.away !== '' ? '#22c55e' : '#475569', fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase' }">Résultat final</span>
+                          :style="{ width: '6px', height: '6px', borderRadius: '50%', background: m.result.home !== '' && m.result.away !== '' ? '#22c55e' : (canEditResult ? '#fbbf24' : '#475569') }"></span>
+                        <span :style="{ fontSize: '9px', color: m.result.home !== '' && m.result.away !== '' ? '#22c55e' : (canEditResult ? '#fbbf24' : '#475569'), fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase' }">{{ canEditResult ? 'Résultat (admin)' : 'Résultat final' }}</span>
                       </div>
                       <div style="display: flex; align-items: center; gap: 6px; justify-content: center">
-                        <div class="score-led-ro" :style="{ color: m.result.home !== '' ? '#fbbf24' : '#334155' }">{{ m.result.home !== '' ? m.result.home : '–' }}</div>
-                        <span style="color: #475569; font-weight: 700; font-size: 22px; font-family: Anton, sans-serif">:</span>
-                        <div class="score-led-ro" :style="{ color: m.result.away !== '' ? '#fbbf24' : '#334155' }">{{ m.result.away !== '' ? m.result.away : '–' }}</div>
+                        <template v-if="canEditResult">
+                          <input class="score-led" type="number" min="0" max="20" placeholder="–"
+                            :value="m.result.home !== '' ? m.result.home : ''"
+                            @input="setMatchResult(m.id, 'home', $event.target.value)" />
+                          <span style="color: #475569; font-weight: 700; font-size: 22px; font-family: Anton, sans-serif">:</span>
+                          <input class="score-led" type="number" min="0" max="20" placeholder="–"
+                            :value="m.result.away !== '' ? m.result.away : ''"
+                            @input="setMatchResult(m.id, 'away', $event.target.value)" />
+                        </template>
+                        <template v-else>
+                          <div class="score-led-ro" :style="{ color: m.result.home !== '' ? '#fbbf24' : '#334155' }">{{ m.result.home !== '' ? m.result.home : '–' }}</div>
+                          <span style="color: #475569; font-weight: 700; font-size: 22px; font-family: Anton, sans-serif">:</span>
+                          <div class="score-led-ro" :style="{ color: m.result.away !== '' ? '#fbbf24' : '#334155' }">{{ m.result.away !== '' ? m.result.away : '–' }}</div>
+                        </template>
                       </div>
                     </div>
                   </div>
@@ -1166,10 +1226,14 @@
                           <span :style="{ width: '8px', height: '8px', borderRadius: '50%', background: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e' : C.muted }"></span>
                           <span :style="{ fontSize: '10px', color: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e' : C.muted, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }">Résultat</span>
                         </div>
-                        <input :style="{ ...sInput, borderColor: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e66' : C.border }"
+                        <input v-if="canEditBonusResult"
+                          :style="{ ...sInput, borderColor: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e66' : C.border }"
                           placeholder="À renseigner..."
                           :value="bonusResults[b.id + '_' + (i - 1)] || ''"
                           @input="setBonusResult(b.id, i - 1, $event.target.value)" />
+                        <div v-else :style="{ ...sInput, borderColor: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e66' : C.border, color: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e' : C.muted, display: 'flex', alignItems: 'center' }">
+                          {{ bonusResults[b.id + '_' + (i - 1)] || '—' }}
+                        </div>
                       </div>
                       <!-- Participant rows -->
                       <div v-for="p in participants" :key="p.id" style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px">
@@ -1315,6 +1379,23 @@
 
           </div>
           </div><!-- /z-index wrapper -->
+
+          <!-- Admin modal -->
+          <div v-if="showAdminModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.78); z-index: 200; display: flex; align-items: center; justify-content: center" @click.self="closeAdminModal">
+            <div style="background: #111827; border: 1px solid #1e293b; border-radius: 14px; padding: 28px 24px; width: 300px; max-width: 90vw">
+              <div class="anton" style="font-size: 18px; color: #fbbf24; letter-spacing: 1.5px; margin-bottom: 4px; text-align: center">⚙ MODE ADMIN</div>
+              <div style="font-size: 11px; color: #64748b; text-align: center; margin-bottom: 18px">Accès en écriture sur toutes les données</div>
+              <div :style="sLabel">Mot de passe</div>
+              <input :style="{ ...sInput, marginBottom: '12px' }" type="password" placeholder="••••••••"
+                :value="adminPassInput" @input="adminPassInput = $event.target.value"
+                @keydown.enter="submitAdminPass" />
+              <div v-if="adminPassError" style="color: #ef4444; font-size: 12px; margin-bottom: 10px">{{ adminPassError }}</div>
+              <div style="display: flex; gap: 8px; margin-top: 4px">
+                <button @click="closeAdminModal" style="flex: 1; background: #1e293b; color: #94a3b8; border: 1px solid #334155; border-radius: 8px; padding: 9px; cursor: pointer; font-family: Syne, sans-serif; font-size: 13px; font-weight: 600">Annuler</button>
+                <button @click="submitAdminPass" style="flex: 1; background: #dc2626; color: #fff; border: none; border-radius: 8px; padding: 9px; cursor: pointer; font-family: Anton, sans-serif; font-size: 13px; letter-spacing: 1px">ENTRER</button>
+              </div>
+            </div>
+          </div>
         </div>
       `
     }).mount('#app');
