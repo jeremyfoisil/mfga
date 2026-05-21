@@ -63,10 +63,10 @@
 
     .title-mfga {
       font-family: 'Anton', sans-serif;
-      font-size: 30px; line-height: 0.95; letter-spacing: 1px; color: #f8fafc;
+      font-size: 36px; line-height: 0.95; letter-spacing: 1px; color: #f8fafc;
       text-shadow:
-        0 1px 0 #1e3a8a, 0 2px 0 #1e3a8a, 0 3px 0 #1e3a8a,
-        0 4px 0 #991b1b, 0 5px 0 #991b1b, 0 6px 8px rgba(0,0,0,0.6);
+        0 1px 0 #1e3a8a, 0 2px 0 #1e3a8a,
+        0 3px 0 #991b1b, 0 4px 6px rgba(0,0,0,0.6);
     }
     .title-red  { color: #fca5a5; }
     .title-blue { color: #93c5fd; }
@@ -259,6 +259,19 @@
 
     .bonus-header { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin: 0 0 14px; border-radius: 10px 10px 0 0; }
     .bonus-icon-box { width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
+
+    @media (max-width: 480px) {
+      .title-mfga { font-size: 26px !important; }
+      .header-quote { display: none !important; }
+      .header-mascot img { width: 110px !important; height: auto !important; }
+      .header-hero-row { gap: 8px !important; }
+      .header-hosts { flex-wrap: wrap !important; gap: 6px !important; margin-top: -4px !important; }
+      .topbar-right { gap: 6px !important; flex-wrap: wrap; justify-content: flex-end; }
+      .wc-mark { font-size: 10px !important; letter-spacing: 1px !important; white-space: nowrap; }
+      .tab-bar { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .tab-bar button { font-size: 11px !important; padding: 8px 10px !important; white-space: nowrap; }
+      .header-tagline { display: none !important; }
+    }
   </style>
 </head>
 <body>
@@ -414,7 +427,8 @@
     };
 
     function getFlagBg(name) {
-      return FLAG_COLORS[name] || "linear-gradient(135deg, #475569, #1e293b)";
+      const fr = TEAM_EN_FR[name] || name;
+      return FLAG_COLORS[fr] || "linear-gradient(135deg, #475569, #1e293b)";
     }
 
     const MELTING_POT_FLAGS = [
@@ -469,7 +483,10 @@
     const medalColors = ["#f59e0b", "#94a3b8", "#cd7c2f"];
     const medalIcons  = ["🥇", "🥈", "🥉"];
 
-    function getFlag(name) { return FLAG_EMOJIS[name] || "🏳️"; }
+    function getFlag(name) {
+      const fr = TEAM_EN_FR[name] || name;
+      return FLAG_EMOJIS[fr] || "🏳️";
+    }
 
     function calcMatchPoints(prono, result) {
       if (!result || result.home === "" || result.away === "") return 0;
@@ -587,8 +604,10 @@
 
         function matchStartsAtMs(m) {
           if (!m.matchDate || !m.matchTime) return Infinity;
-          const re = /(\d{1,2}):(\d{2})\s*UTC([+-]\d+)/;
-          const found = m.matchTime.match(re);
+          // Format timetz Supabase : "13:00:00+06" ou "19:00:00-05"
+          let found = m.matchTime.match(/^(\d{2}):(\d{2}):\d{2}([+-]\d+)/);
+          // Format texte legacy : "13:00 UTC-6"
+          if (!found) found = m.matchTime.match(/(\d{1,2}):(\d{2})\s*UTC([+-]\d+)/);
           if (!found) return Infinity;
           const utcOffset = parseInt(found[3]);
           const utcH = parseInt(found[1]) - utcOffset;
@@ -621,11 +640,12 @@
         const hasKOMatches   = computed(() => matches.value.some(m => m.stage !== "group"));
 
         function calcScore(pid) {
-          let total = 0, exactCount = 0;
+          let total = 0, exactCount = 0, diagCount = 0;
           matches.value.forEach(m => {
             if (m.result.home === "" || m.result.away === "") return;
             const pts = calcMatchPoints(pronostics.value[pid]?.[m.id], m.result);
             if (pts === 3) exactCount++;
+            else if (pts === 1) diagCount++;
             total += jokers.value[pid] === m.id ? pts * 2 : pts;
           });
           BONUS_TYPES.forEach(b => {
@@ -635,7 +655,7 @@
               if (res && prono && res.toLowerCase().trim() === prono.toLowerCase().trim()) total += b.points;
             }
           });
-          return { total, exactCount };
+          return { total, exactCount, diagCount };
         }
 
         const rankings = computed(() =>
@@ -1096,7 +1116,7 @@
                   <span class="dot" style="background: #1e3a8a"></span>
                   WORLD CUP&nbsp;2026
                 </div>
-                <div style="display: flex; align-items: center; gap: 12px">
+                <div class="topbar-right" style="display: flex; align-items: center; gap: 12px">
                   <div style="display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase"
                     :style="{ color: saveMsg ? '#22c55e' : (rtStatus === 'connected' ? '#22c55e' : '#eab308') }">
                     <span :class="rtStatus === 'connected' ? 'live-dot' : ''"
@@ -1110,27 +1130,28 @@
                     <button @click="exitAdmin" style="background: #7f1d1d; color: #fca5a5; border: 1px solid rgba(220,38,38,0.35); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-family: Syne, sans-serif; font-size: 11px">Exit</button>
                   </template>
                   <button v-else @click="openAdminModal" style="background: #1e293b; color: #64748b; border: 1px solid #334155; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-family: Syne, sans-serif; font-size: 11px">Admin</button>
-                  <button @click="doLogout" style="background: #1e293b; color: #94a3b8; border: 1px solid #334155; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-family: Syne, sans-serif; font-size: 11px">Déco</button>
+                  <button @click="doLogout" title="Se déconnecter" style="background: #1e293b; color: #94a3b8; border: 1px solid #334155; border-radius: 6px; padding: 4px 7px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                      <polyline points="16 17 21 12 16 7"/>
+                      <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                  </button>
                 </div>
               </div>
 
               <!-- Mascot + title -->
-              <div style="display: flex; align-items: flex-end; gap: 14px; margin-bottom: 12px">
-                <div style="flex-shrink: 0; position: relative">
-                  <img src="assets/mascot.png" alt="MFGA Goat" width="120" height="102"
-                    style="display: block; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.6))" />
-                  <svg class="ball-spin" width="28" height="28" viewBox="0 0 32 32" style="position: absolute; top: 0; right: -8px">
-                    <circle cx="16" cy="16" r="14" fill="#f8fafc" stroke="#0a0e1a" stroke-width="1.5"/>
-                    <polygon points="16,9 21,13 19,19 13,19 11,13" fill="#0a0e1a"/>
-                    <path d="M16 9 L16 4 M21 13 L26 11 M19 19 L23 23 M13 19 L9 23 M11 13 L6 11" stroke="#0a0e1a" stroke-width="1.2" fill="none"/>
-                  </svg>
-                </div>
-                <div style="flex: 1; min-width: 0">
+              <div class="header-hero-row" style="display: flex; align-items: flex-end; gap: 14px; margin-bottom: 12px">
+                <div style="flex: 1; min-width: 0; align-self: center">
                   <div class="title-mfga">MAKE <span class="title-red">FOOTBALL</span></div>
-                  <div class="title-mfga" style="margin-top: 2px">GOAT <span class="title-blue">AGAIN</span> <span style="font-size: 26px">🐐</span></div>
-                  <div style="color: #fca5a5; font-size: 11px; font-weight: 600; margin-top: 4px; letter-spacing: 0.5px">★ Pronostics non-officiels · 100 % bipartisan ★</div>
+                  <div class="title-mfga" style="margin-top: 2px">GOAT <span class="title-blue">AGAIN</span> <span style="font-size: 32px">🐐</span></div>
+                  <div class="header-tagline" style="color: #fca5a5; font-size: 11px; font-weight: 600; margin-top: 4px; letter-spacing: 0.5px">★ Pronostics non-officiels · 100 % bipartisan ★</div>
                 </div>
-                <div style="flex-shrink: 0; max-width: 155px; align-self: center; border-left: 2px solid rgba(220,38,38,0.5); padding-left: 10px">
+                <div class="header-mascot" style="flex-shrink: 0; position: relative; align-self: flex-end">
+                  <img src="assets/mascot.png" alt="MFGA Goat" width="180" height="153"
+                    style="display: block; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.7))" />
+                </div>
+                <div class="header-quote" style="flex-shrink: 0; max-width: 155px; align-self: center; border-left: 2px solid rgba(220,38,38,0.5); padding-left: 10px">
                   <div style="font-size: 9.5px; color: #94a3b8; font-style: italic; line-height: 1.5; letter-spacing: 0.2px">
                     « La compét' d'Infantino, bénie par Trump, gagné par les chèvres »
                   </div>
@@ -1138,7 +1159,7 @@
               </div>
 
               <!-- Host countries -->
-              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 11px; color: #cbd5e1; font-weight: 600">
+              <div class="header-hosts" style="display: flex; align-items: center; gap: 10px; margin-top: -22px; margin-bottom: 12px; font-size: 11px; color: #cbd5e1; font-weight: 600">
                 <span style="color: #64748b; letter-spacing: 1px; text-transform: uppercase; font-size: 10px">Pays hôtes</span>
                 <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(220,38,38,0.18); border: 1px solid rgba(220,38,38,0.4); padding: 2px 8px; border-radius: 4px">🇺🇸 USA</span>
                 <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(220,38,38,0.18); border: 1px solid rgba(220,38,38,0.4); padding: 2px 8px; border-radius: 4px">🇨🇦 Canada</span>
@@ -1147,7 +1168,7 @@
               </div>
 
               <!-- Tabs -->
-              <div style="display: flex; gap: 4px; margin-top: 4px">
+              <div class="tab-bar" style="display: flex; gap: 4px; margin-top: 4px">
                 <button v-for="(t, i) in TABS" :key="i" :style="tabStyle(tab === i)" @click="tab = i">{{ t }}</button>
               </div>
             </div>
@@ -1296,10 +1317,12 @@
                     <div class="team-block home">
                       <div class="flag-bg" :style="{ background: m.homeKnown ? getFlagBg(m.home) : 'linear-gradient(135deg, #f59e0b33, #451a03)' }"></div>
                       <span class="name" :style="{ color: m.homeKnown ? '#fff' : '#f59e0b' }">{{ m.home }}</span>
+                      <span v-if="m.homeKnown" style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1">{{ getFlag(m.home) }}</span>
                     </div>
                     <div style="display: flex; align-items: center"><span class="vs-chunk">VS</span></div>
                     <div class="team-block away">
                       <div class="flag-bg" :style="{ background: m.awayKnown ? getFlagBg(m.away) : 'linear-gradient(135deg, #451a03, #f59e0b33)' }"></div>
+                      <span v-if="m.awayKnown" style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1">{{ getFlag(m.away) }}</span>
                       <span class="name" :style="{ color: m.awayKnown ? '#fff' : '#f59e0b' }">{{ m.away }}</span>
                     </div>
                   </div>
@@ -1645,7 +1668,7 @@ Giroud, 45'
                 <div class="podium">
                   <!-- 2nd -->
                   <div v-if="rankings[1]">
-                    <div class="podium-step silver" style="height: 110px">
+                    <div class="podium-step silver" style="min-height: 110px">
                       <div class="avatar-disc" :style="{ background: 'linear-gradient(135deg, ' + rankings[1].color + ', ' + rankings[1].color + 'cc)', margin: '0 auto 6px' }">{{ initials(rankings[1].name) }}</div>
                       <div class="medal">🥈</div>
                       <div class="p-name">{{ rankings[1].name }}</div>
@@ -1658,7 +1681,7 @@ Giroud, 45'
 
                   <!-- 1st -->
                   <div>
-                    <div class="podium-step gold" style="height: 140px">
+                    <div class="podium-step gold" style="min-height: 140px">
                       <div style="position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font-size: 26px">👑</div>
                       <div class="avatar-disc" :style="{ background: 'linear-gradient(135deg, ' + rankings[0].color + ', ' + rankings[0].color + 'cc)', margin: '0 auto 6px', width: '44px', height: '44px', fontSize: '18px' }">{{ initials(rankings[0].name) }}</div>
                       <div class="medal">🥇</div>
@@ -1671,7 +1694,7 @@ Giroud, 45'
 
                   <!-- 3rd -->
                   <div v-if="rankings[2]">
-                    <div class="podium-step bronze" style="height: 90px">
+                    <div class="podium-step bronze" style="min-height: 90px">
                       <div class="avatar-disc" :style="{ background: 'linear-gradient(135deg, ' + rankings[2].color + ', ' + rankings[2].color + 'cc)', margin: '0 auto 4px', width: '32px', height: '32px', fontSize: '13px' }">{{ initials(rankings[2].name) }}</div>
                       <div class="medal" style="font-size: 20px">🥉</div>
                       <div class="p-name">{{ rankings[2].name }}</div>
@@ -1720,9 +1743,9 @@ Giroud, 45'
                     <tr :style="{ color: C.muted }">
                       <th style="text-align: left; padding: 6px; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase">Joueur</th>
                       <th style="text-align: center; padding: 6px; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase">Joués</th>
+                      <th style="text-align: center; padding: 6px; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase">✅</th>
                       <th style="text-align: center; padding: 6px; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase">🎯</th>
-                      <th style="text-align: center; padding: 6px; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase">Bonus</th>
-                      <th style="text-align: right; padding: 6px; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase">Total</th>
+                      <th style="text-align: right; padding: 6px; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase">Bonus</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1732,9 +1755,9 @@ Giroud, 45'
                         {{ p.name }}
                       </td>
                       <td :style="{ textAlign: 'center', padding: '8px 6px', color: C.muted }">{{ matchesPlayedCount() }}</td>
+                      <td :style="{ textAlign: 'center', padding: '8px 6px', color: '#60a5fa', fontWeight: 700 }">{{ p.diagCount }}</td>
                       <td :style="{ textAlign: 'center', padding: '8px 6px', color: C.green, fontWeight: 700 }">{{ p.exactCount }}</td>
-                      <td :style="{ textAlign: 'center', padding: '8px 6px', color: C.gold, fontWeight: 700 }">{{ (p.total - matchPtsForRanking(p.id)) > 0 ? '+' + (p.total - matchPtsForRanking(p.id)) : '–' }}</td>
-                      <td :style="{ textAlign: 'right', padding: '8px 6px', fontFamily: 'Anton, sans-serif', fontSize: '14px', color: medalColors[i] || C.text }">{{ p.total }}</td>
+                      <td :style="{ textAlign: 'right', padding: '8px 6px', color: C.gold, fontWeight: 700 }">{{ (p.total - matchPtsForRanking(p.id)) > 0 ? '+' + (p.total - matchPtsForRanking(p.id)) : '–' }}</td>
                     </tr>
                   </tbody>
                 </table>
