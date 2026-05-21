@@ -688,6 +688,15 @@
         function ptColor(pts, hasRes) {
           return pts === 3 ? C.green : pts === 1 ? C.yellow : hasRes ? "#ef4444" : C.muted;
         }
+        function pronoCompletion(pid) {
+          const total = matches.value.length;
+          if (!total) return { filled: 0, total: 0, pct: 0 };
+          const filled = matches.value.filter(m => {
+            const p = pronostics.value[pid]?.[m.id];
+            return p && p.home !== "" && p.away !== "";
+          }).length;
+          return { filled, total, pct: Math.round(filled / total * 100) };
+        }
         function getBonusProno(pid, key)  { return bonusPronostics.value[pid]?.[key] || ""; }
         function isBonusCorrect(pid, key) {
           const res = bonusResults.value[key], prono = bonusPronostics.value[pid]?.[key];
@@ -1011,7 +1020,7 @@
           tabStyle, btnStyle, badgeStyle,
           getFlag, calcScore, setMatchResult, setMatchGoalText, setProno, setBonus, setBonusResult, toggleJoker,
           getProno, isJokerMatch, getMatchPts, ptColor, getBonusProno,
-          isBonusCorrect, isBonusWrong, matchPtsForRanking, matchesPlayedCount, activeParticipantName, activeParticipantColor,
+          isBonusCorrect, isBonusWrong, matchPtsForRanking, matchesPlayedCount, activeParticipantName, activeParticipantColor, pronoCompletion,
           getBonusIcon, initials, CONFETTI_BITS, BONUS_ICONS, formatDate,
           FLAG_COLORS, MELTING_POT_FLAGS, getFlagBg, mapMatchRow,
         };
@@ -1196,6 +1205,19 @@
                   <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px">
                     <div style="font-size: 11px; color: #64748b">🎯 {{ p.exactCount }} exact{{ p.exactCount > 1 ? 's' : '' }}</div>
                     <div v-if="isMe(p.id)" style="font-size: 10px; color: #3b82f6; font-weight: 700; background: #3b82f618; border: 1px solid #3b82f633; border-radius: 4px; padding: 1px 5px">Moi</div>
+                  </div>
+                  <div style="margin-top: 6px">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px">
+                      <span style="font-size: 10px; color: #64748b; letter-spacing: 0.5px">Pronos renseignés</span>
+                      <span style="font-size: 10px; font-weight: 700;" :style="{ color: pronoCompletion(p.id).pct === 100 ? '#22c55e' : pronoCompletion(p.id).pct >= 50 ? '#f59e0b' : '#ef4444' }">
+                        {{ pronoCompletion(p.id).filled }}/{{ pronoCompletion(p.id).total }} · {{ pronoCompletion(p.id).pct }}%
+                      </span>
+                    </div>
+                    <div style="height: 4px; background: #1e293b; border-radius: 2px; overflow: hidden">
+                      <div style="height: 100%; border-radius: 2px; transition: width 0.3s"
+                        :style="{ width: pronoCompletion(p.id).pct + '%', background: pronoCompletion(p.id).pct === 100 ? '#22c55e' : pronoCompletion(p.id).pct >= 50 ? '#f59e0b' : '#ef4444' }">
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div style="text-align: right">
