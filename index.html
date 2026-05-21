@@ -322,6 +322,8 @@
       { id: "L", teams: ["Angleterre", "Croatie", "Ghana", "Panama"] },
     ];
 
+    const ALL_TEAMS = GROUPS.flatMap(g => g.teams).sort((a, b) => a.localeCompare(b, 'fr'));
+
     const BONUS_TYPES = [
       { id: "winner",    label: "Vainqueur du tournoi",                     points: 10, count: 1 },
       { id: "finalist",  label: "Finalistes (les 2)",                       points: 5,  count: 2 },
@@ -331,7 +333,7 @@
       { id: "upset",     label: "Favori éliminé en groupes",                points: 6,  count: 1 },
     ];
 
-    const TABS = ["Participants", "Matchs", "Bonus", "Classement"];
+    const TABS = ["Participants", "Matchs", "Bonus", "Tableau", "Classement"];
 
     const KO_STAGES = [
       { id: "r32",   label: "32èmes" },
@@ -630,7 +632,9 @@
         const myParticipantId    = computed(() => profile.value?.participant_id ?? null);
         const canEditProno       = computed(() => isAdmin.value || (activeParticipant.value !== null && activeParticipant.value === myParticipantId.value));
         const canEditResult      = computed(() => isAdmin.value);
-        const canEditBonusResult = computed(() => isAdmin.value);
+        const BONUS_LOCK_DATE    = new Date("2026-06-11T00:00:00Z");
+        const bonusLocked        = computed(() => new Date() >= BONUS_LOCK_DATE);
+        const canEditBonusResult = computed(() => isAdmin.value && !bonusLocked.value);
         function isMe(pid) { return pid === myParticipantId.value; }
 
         // ── Computed ──────────────────────────────────────────────────────────
@@ -1008,13 +1012,13 @@
           doRegister, doLogin, doLogout,
           loaded, saveMsg, rtStatus, tab, participants, matches, pronostics,
           bonusPronostics, bonusResults, jokers, activeGroup, activeParticipant,
-          myParticipantId, canEditProno, canEditResult, canEditBonusResult, isMe,
+          myParticipantId, canEditProno, canEditResult, canEditBonusResult, bonusLocked, isMe,
           isAdmin, showAdminModal, adminPassInput, adminPassError,
           openAdminModal, closeAdminModal, submitAdminPass, exitAdmin,
           showImportModal, importJsonText, importStatus, importLoading, importJson,
           canEditMatchProno, hasMatchStarted,
           activeStageType, activeKOStage, KO_STAGES, GROUP_IDS, hasKOMatches, koStageMatches,
-          BONUS_TYPES, TABS, C, medalColors, medalIcons,
+          BONUS_TYPES, ALL_TEAMS, TABS, C, medalColors, medalIcons,
           rtColor, groupMatches, rankings,
           sCard, sInput, sLabel,
           tabStyle, btnStyle, badgeStyle,
@@ -1606,7 +1610,10 @@ Giroud, 45'
                 <div style="font-size: 28px; flex-shrink: 0">🎯</div>
                 <div>
                   <div class="anton" style="font-size: 14px; color: #fbbf24; letter-spacing: 1px; margin-bottom: 2px">PRONOSTICS BONUS</div>
-                  <div :style="{ fontSize: '11px', color: C.muted, lineHeight: 1.5 }">À rendre avant le coup d'envoi. Saisissez les prédictions de chaque joueur, puis entrez les vrais résultats.</div>
+                  <div :style="{ fontSize: '11px', color: C.muted, lineHeight: 1.5 }">
+                    <span v-if="bonusLocked" style="color: #ef4444; font-weight: 700">🔒 Verrouillé depuis le 11 juin 2026.</span>
+                    <span v-else>À rendre avant le <b style="color: #f8fafc">11 juin 2026</b>. Saisissez vos prédictions avant le coup d'envoi.</span>
+                  </div>
                 </div>
               </div>
 
@@ -1635,14 +1642,28 @@ Giroud, 45'
                           <span :style="{ width: '8px', height: '8px', borderRadius: '50%', background: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e' : C.muted }"></span>
                           <span :style="{ fontSize: '10px', color: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e' : C.muted, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }">Résultat</span>
                         </div>
-                        <input v-if="canEditBonusResult"
-                          :style="{ ...sInput, borderColor: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e66' : C.border }"
-                          placeholder="À renseigner..."
-                          :value="bonusResults[b.id + '_' + (i - 1)] || ''"
-                          @input="setBonusResult(b.id, i - 1, $event.target.value)" />
-                        <div v-else :style="{ ...sInput, borderColor: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e66' : C.border, color: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e' : C.muted, display: 'flex', alignItems: 'center' }">
-                          {{ bonusResults[b.id + '_' + (i - 1)] || '—' }}
-                        </div>
+                        <template v-if="['winner','finalist','semi'].includes(b.id)">
+                          <select v-if="canEditBonusResult"
+                            :style="{ ...sInput, borderColor: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e66' : C.border }"
+                            :value="bonusResults[b.id + '_' + (i - 1)] || ''"
+                            @change="setBonusResult(b.id, i - 1, $event.target.value)">
+                            <option value="">À renseigner...</option>
+                            <option v-for="team in ALL_TEAMS" :key="team" :value="team">{{ team }}</option>
+                          </select>
+                          <div v-else :style="{ ...sInput, borderColor: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e66' : C.border, color: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e' : C.muted, display: 'flex', alignItems: 'center' }">
+                            {{ bonusResults[b.id + '_' + (i - 1)] || '—' }}
+                          </div>
+                        </template>
+                        <template v-else>
+                          <input v-if="canEditBonusResult"
+                            :style="{ ...sInput, borderColor: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e66' : C.border }"
+                            placeholder="À renseigner..."
+                            :value="bonusResults[b.id + '_' + (i - 1)] || ''"
+                            @input="setBonusResult(b.id, i - 1, $event.target.value)" />
+                          <div v-else :style="{ ...sInput, borderColor: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e66' : C.border, color: bonusResults[b.id + '_' + (i - 1)] ? '#22c55e' : C.muted, display: 'flex', alignItems: 'center' }">
+                            {{ bonusResults[b.id + '_' + (i - 1)] || '—' }}
+                          </div>
+                        </template>
                       </div>
                       <!-- Participant rows -->
                       <div v-for="p in participants" :key="p.id" style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px">
@@ -1650,12 +1671,25 @@ Giroud, 45'
                           <div :style="{ width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, ' + p.color + ', ' + p.color + 'cc)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 700, fontFamily: 'Anton, sans-serif', flexShrink: 0 }">{{ initials(p.name) }}</div>
                           <span :style="{ fontSize: '11px', fontWeight: 600, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }">{{ p.name }}</span>
                         </div>
-                        <input
-                          :style="{ ...sInput, borderColor: isBonusCorrect(p.id, b.id + '_' + (i - 1)) ? '#22c55e' : isBonusWrong(p.id, b.id + '_' + (i - 1)) ? '#ef444466' : C.border, background: isBonusCorrect(p.id, b.id + '_' + (i - 1)) ? 'rgba(34,197,94,0.08)' : '#1e293b', opacity: isMe(p.id) ? 1 : 0.6 }"
-                          :placeholder="isMe(p.id) ? 'Mon pronostic...' : '—'"
-                          :disabled="!isMe(p.id)"
-                          :value="getBonusProno(p.id, b.id + '_' + (i - 1))"
-                          @input="setBonus(p.id, b.id, i - 1, $event.target.value)" />
+                        <template v-if="bonusLocked || !isMe(p.id)">
+                          <div :style="{ ...sInput, color: getBonusProno(p.id, b.id + '_' + (i - 1)) ? (isBonusCorrect(p.id, b.id + '_' + (i - 1)) ? '#22c55e' : isBonusWrong(p.id, b.id + '_' + (i - 1)) ? '#ef4444' : C.text) : C.muted, borderColor: isBonusCorrect(p.id, b.id + '_' + (i - 1)) ? '#22c55e' : isBonusWrong(p.id, b.id + '_' + (i - 1)) ? '#ef444466' : C.border, opacity: isMe(p.id) ? 1 : 0.6, display: 'flex', alignItems: 'center' }">
+                            {{ getBonusProno(p.id, b.id + '_' + (i - 1)) || '—' }}
+                          </div>
+                        </template>
+                        <template v-else>
+                          <select v-if="['winner','finalist','semi'].includes(b.id)"
+                            :style="{ ...sInput, borderColor: C.border, background: '#1e293b' }"
+                            :value="getBonusProno(p.id, b.id + '_' + (i - 1))"
+                            @change="setBonus(p.id, b.id, i - 1, $event.target.value)">
+                            <option value="">Choisir une équipe...</option>
+                            <option v-for="team in ALL_TEAMS" :key="team" :value="team">{{ team }}</option>
+                          </select>
+                          <input v-else
+                            :style="{ ...sInput, borderColor: C.border, background: '#1e293b' }"
+                            placeholder="Mon pronostic..."
+                            :value="getBonusProno(p.id, b.id + '_' + (i - 1))"
+                            @input="setBonus(p.id, b.id, i - 1, $event.target.value)" />
+                        </template>
                         <span v-if="isBonusCorrect(p.id, b.id + '_' + (i - 1))" style="color: #22c55e; font-weight: 800; font-size: 12px; flex-shrink: 0; font-family: Anton, sans-serif; letter-spacing: 0.5px">+{{ b.points }}</span>
                         <span v-else-if="isBonusWrong(p.id, b.id + '_' + (i - 1))" style="color: #ef4444; font-size: 14px; flex-shrink: 0">✕</span>
                       </div>
@@ -1665,8 +1699,18 @@ Giroud, 45'
               </div>
             </div>
 
-            <!-- TAB 3 — Classement -->
+            <!-- TAB 3 — Tableau -->
             <div v-if="tab === 3">
+              <div :style="{ ...sCard, padding: '12px', textAlign: 'center' }">
+                <div class="anton" style="font-size: 14px; color: #fbbf24; letter-spacing: 1px; margin-bottom: 10px">TABLEAU DE LA PHASE FINALE</div>
+                <img src="assets/tableau.png" alt="Tableau phase finale CdM 2026"
+                  style="width: 100%; max-width: 700px; border-radius: 8px; display: block; margin: 0 auto" />
+                <div style="font-size: 10px; color: #475569; margin-top: 8px">Source : FIFA / AFP</div>
+              </div>
+            </div>
+
+            <!-- TAB 4 — Classement -->
+            <div v-if="tab === 4">
               <!-- Banner -->
               <div class="card-rel" :style="{ ...sCard, background: 'linear-gradient(135deg, #1e3a8a 0%, #7f1d1d 100%)', marginBottom: '16px', textAlign: 'center', padding: '22px 16px', border: '1px solid #f59e0b66' }">
                 <div style="position: absolute; top: -10px; left: -10px; font-size: 60px; opacity: 0.12">★</div>
