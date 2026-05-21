@@ -4,9 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Make Football Goat Again 🐐</title>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <style>
@@ -21,9 +19,9 @@
   </style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
+  <div id="app"></div>
+  <script>
+    const { createApp, ref, computed, watch, onMounted } = Vue;
 
     const SUPABASE_URL  = "https://sazupuqxwrnvgzsdxkjg.supabase.co";
     const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhenVwdXF4d3Judmd6c2R4a2pnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNzc1MTEsImV4cCI6MjA5NDg1MzUxMX0.j2vQhrzFDDoaMV9i6CDIvF_9vpenDSFZ5julcjfXIBE";
@@ -69,17 +67,18 @@
       "Angleterre": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Croatie": "🇭🇷", "Ghana": "🇬🇭", "Panama": "🇵🇦",
     };
 
-    const DEFAULT_PARTICIPANTS = [
-      { id: 1, name: "Maxime", color: "#e63946" },
-      { id: 2, name: "Thomas", color: "#2a9d8f" },
-      { id: 3, name: "Sophie", color: "#f4a261" },
-    ];
-
     const PARTICIPANT_COLORS = ["#e63946","#2a9d8f","#f4a261","#457b9d","#a8dadc","#e9c46a","#264653","#f77f00"];
 
-    function getFlag(name) {
-      return FLAG_EMOJIS[name] || "🏳️";
-    }
+    const C = {
+      bg: "#0a0e1a", card: "#111827", border: "#1e293b", accent: "#3b82f6",
+      gold: "#f59e0b", silver: "#94a3b8", bronze: "#cd7c2f",
+      text: "#f1f5f9", muted: "#64748b", green: "#22c55e", yellow: "#eab308",
+    };
+
+    const medalColors = ["#f59e0b", "#94a3b8", "#cd7c2f"];
+    const medalIcons  = ["🥇", "🥈", "🥉"];
+
+    function getFlag(name) { return FLAG_EMOJIS[name] || "🏳️"; }
 
     function calcMatchPoints(prono, result) {
       if (!result || result.home === "" || result.away === "") return 0;
@@ -92,588 +91,642 @@
     }
 
     function buildDefaultMatches() {
-      const ms = [];
-      let id = 1;
+      const ms = []; let id = 1;
       GROUPS.forEach(g => {
-        for (let i = 0; i < 4; i++) {
-          for (let j = i + 1; j < 4; j++) {
+        for (let i = 0; i < 4; i++)
+          for (let j = i + 1; j < 4; j++)
             ms.push({ id: id++, group: g.id, home: g.teams[i], away: g.teams[j], result: { home: "", away: "" } });
-          }
-        }
       });
       return ms;
     }
 
-    function App() {
-      const [loaded, setLoaded]                   = useState(false);
-      const [saveMsg, setSaveMsg]                 = useState("");
-      const [rtStatus, setRtStatus]               = useState("connecting");
-      const [tab, setTab]                         = useState(0);
-      const [participants, setParticipants]       = useState([]);
-      const [newParticipant, setNewParticipant]   = useState("");
-      const [matches, setMatches]                 = useState(buildDefaultMatches);
-      const [pronostics, setPronostics]           = useState({});
-      const [bonusPronostics, setBonusPronostics] = useState({});
-      const [bonusResults, setBonusResults]       = useState({});
-      const [jokers, setJokers]                   = useState({});
-      const [activeGroup, setActiveGroup]         = useState("A");
-      const [activeParticipant, setActiveParticipant] = useState(null);
+    createApp({
+      setup() {
+        // ── Auth ──────────────────────────────────────────────────────────────
+        const session      = ref(null);
+        const profile      = ref(null);
+        const authMode     = ref("login");
+        const authUsername = ref("");
+        const authPassword = ref("");
+        const authError    = ref("");
+        const authLoading  = ref(false);
 
-      const sb           = useRef(supabase.createClient(SUPABASE_URL, SUPABASE_ANON));
-      const writeTimers  = useRef({});
-      // Holds latest values for use in debounced callbacks without stale closures
-      const latest       = useRef({});
+        // ── App state ─────────────────────────────────────────────────────────
+        const loaded            = ref(false);
+        const saveMsg           = ref("");
+        const rtStatus          = ref("connecting");
+        const tab               = ref(0);
+        const participants      = ref([]);
+        const matches           = ref(buildDefaultMatches());
+        const pronostics        = ref({});
+        const bonusPronostics   = ref({});
+        const bonusResults      = ref({});
+        const jokers            = ref({});
+        const activeGroup       = ref("A");
+        const activeParticipant = ref(null);
 
-      useEffect(() => { latest.current = { matches, pronostics, jokers }; }, [matches, pronostics, jokers]);
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+        const writeTimers = {};
+        let realtimeChannel = null;
 
-      // ── Initial load ──────────────────────────────────────────────────────
-      useEffect(() => {
-        async function load() {
-          const db = sb.current;
-          const [
-            { data: pData  },
-            { data: mrData },
-            { data: prData },
-            { data: brData },
-            { data: bpData },
-          ] = await Promise.all([
-            db.from("participants").select("*").order("created_at"),
-            db.from("match_results").select("*"),
-            db.from("pronostics").select("*"),
-            db.from("bonus_results").select("*"),
-            db.from("bonus_pronostics").select("*"),
+        // ── Permissions ───────────────────────────────────────────────────────
+        const myParticipantId = computed(() => profile.value?.participant_id ?? null);
+        const canEditProno    = computed(() => activeParticipant.value !== null && activeParticipant.value === myParticipantId.value);
+        function isMe(pid) { return pid === myParticipantId.value; }
+
+        // ── Computed ──────────────────────────────────────────────────────────
+        const rtColor      = computed(() => rtStatus.value === "connected" ? C.green : C.yellow);
+        const rtDot        = computed(() => rtStatus.value === "connected" ? "🟢" : "🟡");
+        const groupMatches = computed(() => matches.value.filter(m => m.group === activeGroup.value));
+
+        function calcScore(pid) {
+          let total = 0, exactCount = 0;
+          matches.value.forEach(m => {
+            if (m.result.home === "" || m.result.away === "") return;
+            const pts = calcMatchPoints(pronostics.value[pid]?.[m.id], m.result);
+            if (pts === 3) exactCount++;
+            total += jokers.value[pid] === m.id ? pts * 2 : pts;
+          });
+          BONUS_TYPES.forEach(b => {
+            for (let i = 0; i < b.count; i++) {
+              const key = `${b.id}_${i}`;
+              const res = bonusResults.value[key], prono = bonusPronostics.value[pid]?.[key];
+              if (res && prono && res.toLowerCase().trim() === prono.toLowerCase().trim()) total += b.points;
+            }
+          });
+          return { total, exactCount };
+        }
+
+        const rankings = computed(() =>
+          participants.value.map(p => ({ ...p, ...calcScore(p.id) }))
+            .sort((a, b) => b.total - a.total || b.exactCount - a.exactCount)
+        );
+
+        // ── Style helpers ─────────────────────────────────────────────────────
+        const sCard       = { background: C.card, border: `1px solid ${C.border}`, borderRadius: "12px", padding: "14px", marginBottom: "10px" };
+        const sInput      = { background: "#1e293b", border: `1px solid ${C.border}`, borderRadius: "8px", color: C.text, padding: "8px 12px", fontFamily: "'Syne', sans-serif", fontSize: "13px", outline: "none", width: "100%" };
+        const sScoreInput = { background: "#1e293b", border: `1px solid ${C.border}`, borderRadius: "6px", color: C.text, padding: "6px 0", fontFamily: "'Syne', sans-serif", fontSize: "15px", fontWeight: 700, textAlign: "center", width: "44px", outline: "none" };
+        const sLabel      = { color: C.muted, fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px", display: "block" };
+
+        function tabStyle(active) {
+          return { padding: "10px 16px", background: active ? C.accent : "transparent", color: active ? "#fff" : C.muted, border: "none", borderRadius: "8px 8px 0 0", cursor: "pointer", fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: "13px" };
+        }
+        function btnStyle(color) {
+          return { background: color || C.accent, color: "#fff", border: "none", borderRadius: "8px", padding: "8px 16px", cursor: "pointer", fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "13px" };
+        }
+        function badgeStyle(color) {
+          return { background: color + "22", color, border: `1px solid ${color}44`, borderRadius: "6px", padding: "2px 8px", fontSize: "12px", fontWeight: 700 };
+        }
+        function groupBtnStyle(active) {
+          return { padding: "6px 11px", background: active ? C.accent : "#1e293b", color: active ? "#fff" : C.muted, border: `1px solid ${active ? C.accent : C.border}`, borderRadius: "8px", cursor: "pointer", fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: "12px" };
+        }
+        function pBtnStyle(active, color) {
+          return { padding: "6px 13px", background: active ? color : "#1e293b", color: active ? "#fff" : C.muted, border: `1px solid ${active ? color : C.border}`, borderRadius: "20px", cursor: "pointer", fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: "12px" };
+        }
+
+        // ── Template helpers ──────────────────────────────────────────────────
+        function getProno(pid, matchId)     { return pronostics.value[pid]?.[matchId] || {}; }
+        function isJokerMatch(pid, matchId) { return jokers.value[pid] === matchId; }
+        function getMatchPts(pid, matchId) {
+          const m = matches.value.find(x => x.id === matchId);
+          return m ? calcMatchPoints(pronostics.value[pid]?.[m.id], m.result) : 0;
+        }
+        function ptColor(pts, hasRes) {
+          return pts === 3 ? C.green : pts === 1 ? C.yellow : hasRes ? "#ef4444" : C.muted;
+        }
+        function getBonusProno(pid, key)    { return bonusPronostics.value[pid]?.[key] || ""; }
+        function isBonusCorrect(pid, key) {
+          const res = bonusResults.value[key], prono = bonusPronostics.value[pid]?.[key];
+          return !!(res && prono && res.toLowerCase().trim() === prono.toLowerCase().trim());
+        }
+        function matchPtsForRanking(pid) {
+          return matches.value.reduce((acc, m) => {
+            if (m.result.home === "" || m.result.away === "") return acc;
+            const pts = calcMatchPoints(pronostics.value[pid]?.[m.id], m.result);
+            return acc + (jokers.value[pid] === m.id ? pts * 2 : pts);
+          }, 0);
+        }
+        function matchesPlayedCount() {
+          return matches.value.filter(m => m.result.home !== "" && m.result.away !== "").length;
+        }
+        function activeParticipantName() {
+          return participants.value.find(p => p.id === activeParticipant.value)?.name || "";
+        }
+
+        // ── Flash / debounce ──────────────────────────────────────────────────
+        function flash() { saveMsg.value = "✓ Sauvegardé"; setTimeout(() => { saveMsg.value = ""; }, 2000); }
+        function debounce(key, fn, delay = 600) {
+          if (writeTimers[key]) clearTimeout(writeTimers[key]);
+          writeTimers[key] = setTimeout(async () => { await fn(); flash(); }, delay);
+        }
+
+        // ── Data actions ──────────────────────────────────────────────────────
+        function setMatchResult(matchId, side, val) {
+          matches.value = matches.value.map(m => m.id !== matchId ? m : { ...m, result: { ...m.result, [side]: val } });
+          debounce(`mr_${matchId}`, async () => {
+            const m = matches.value.find(x => x.id === matchId);
+            if (!m) return;
+            await sb.from("match_results").upsert({
+              match_id: matchId,
+              result_home: m.result.home === "" ? null : parseInt(m.result.home),
+              result_away: m.result.away === "" ? null : parseInt(m.result.away),
+            }, { onConflict: "match_id" });
+          });
+        }
+
+        function setProno(pid, matchId, side, val) {
+          if (!isMe(pid)) return;
+          const cur = pronostics.value;
+          pronostics.value = { ...cur, [pid]: { ...cur[pid], [matchId]: { ...(cur[pid]?.[matchId] || {}), [side]: val } } };
+          debounce(`prono_${pid}_${matchId}`, async () => {
+            const prono = pronostics.value[pid]?.[matchId];
+            if (!prono) return;
+            await sb.from("pronostics").upsert({
+              participant_id: pid, match_id: matchId,
+              prono_home: prono.home === "" ? null : parseInt(prono.home),
+              prono_away: prono.away === "" ? null : parseInt(prono.away),
+              is_joker: jokers.value[pid] === matchId,
+            }, { onConflict: "participant_id,match_id" });
+          });
+        }
+
+        function setBonus(pid, bonusId, idx, val) {
+          if (!isMe(pid)) return;
+          const key = `${bonusId}_${idx}`;
+          bonusPronostics.value = { ...bonusPronostics.value, [pid]: { ...bonusPronostics.value[pid], [key]: val } };
+          debounce(`bp_${pid}_${key}`, async () => {
+            await sb.from("bonus_pronostics").upsert(
+              { participant_id: pid, bonus_key: key, value: val },
+              { onConflict: "participant_id,bonus_key" }
+            );
+          });
+        }
+
+        function setBonusResult(bonusId, idx, val) {
+          const key = `${bonusId}_${idx}`;
+          bonusResults.value = { ...bonusResults.value, [key]: val };
+          debounce(`br_${key}`, async () => {
+            await sb.from("bonus_results").upsert({ bonus_key: key, value: val }, { onConflict: "bonus_key" });
+          });
+        }
+
+        async function toggleJoker(pid, matchId) {
+          if (!isMe(pid)) return;
+          const isCurrentJoker = jokers.value[pid] === matchId;
+          const oldJokerMatchId = jokers.value[pid];
+          jokers.value = { ...jokers.value, [pid]: isCurrentJoker ? null : matchId };
+
+          if (oldJokerMatchId && oldJokerMatchId !== matchId) {
+            const oldProno = pronostics.value[pid]?.[oldJokerMatchId] || {};
+            await sb.from("pronostics").upsert({
+              participant_id: pid, match_id: oldJokerMatchId,
+              prono_home: oldProno.home === "" ? null : parseInt(oldProno.home),
+              prono_away: oldProno.away === "" ? null : parseInt(oldProno.away),
+              is_joker: false,
+            }, { onConflict: "participant_id,match_id" });
+          }
+
+          const prono = pronostics.value[pid]?.[matchId] || {};
+          await sb.from("pronostics").upsert({
+            participant_id: pid, match_id: matchId,
+            prono_home: prono.home === "" ? null : parseInt(prono.home),
+            prono_away: prono.away === "" ? null : parseInt(prono.away),
+            is_joker: !isCurrentJoker,
+          }, { onConflict: "participant_id,match_id" });
+          flash();
+        }
+
+        // ── Auth actions ──────────────────────────────────────────────────────
+        async function doRegister() {
+          authLoading.value = true;
+          authError.value = "";
+          try {
+            const username = authUsername.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
+            if (username.length < 2) throw new Error("Le nom doit faire au moins 2 caractères (lettres, chiffres, _)");
+            if (authPassword.value.length < 6) throw new Error("Le mot de passe doit faire au moins 6 caractères");
+            const { data, error } = await sb.auth.signUp({ email: `${username}@mfga.app`, password: authPassword.value });
+            if (error) {
+              if (error.message.includes("already registered") || error.message.includes("already exists"))
+                throw new Error("Ce nom d'utilisateur est déjà pris");
+              if (error.message.includes("rate limit"))
+                throw new Error("Trop de tentatives, réessayez dans quelques minutes");
+              throw error;
+            }
+            if (data.user && !data.session)
+              throw new Error("Confirmez votre email avant de vous connecter (ou désactivez la confirmation email dans Supabase)");
+          } catch (e) {
+            authError.value = e.message;
+          } finally {
+            authLoading.value = false;
+          }
+        }
+
+        async function doLogin() {
+          authLoading.value = true;
+          authError.value = "";
+          try {
+            const username = authUsername.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
+            const { error } = await sb.auth.signInWithPassword({ email: `${username}@mfga.app`, password: authPassword.value });
+            if (error) throw new Error("Nom d'utilisateur ou mot de passe incorrect");
+          } catch (e) {
+            authError.value = e.message;
+          } finally {
+            authLoading.value = false;
+          }
+        }
+
+        async function doLogout() {
+          if (realtimeChannel) { sb.removeChannel(realtimeChannel); realtimeChannel = null; }
+          await sb.auth.signOut();
+          session.value = null;
+          profile.value = null;
+          loaded.value = false;
+          participants.value = [];
+          pronostics.value = {};
+          bonusPronostics.value = {};
+          bonusResults.value = {};
+          jokers.value = {};
+          matches.value = buildDefaultMatches();
+          tab.value = 0;
+          authUsername.value = "";
+          authPassword.value = "";
+        }
+
+        // ── Data loading ──────────────────────────────────────────────────────
+        async function loadData(userId) {
+          // Fetch profile (with retry in case trigger hasn't completed yet)
+          let { data: prof } = await sb.from("profiles").select("*").eq("id", userId).single();
+          if (!prof) {
+            await new Promise(r => setTimeout(r, 900));
+            const { data: retry } = await sb.from("profiles").select("*").eq("id", userId).single();
+            prof = retry;
+          }
+          if (!prof) { authError.value = "Profil introuvable. Contactez l'administrateur."; return; }
+          profile.value = prof;
+
+          const [{ data: pData }, { data: mrData }, { data: prData }, { data: brData }, { data: bpData }] = await Promise.all([
+            sb.from("participants").select("*").order("id"),
+            sb.from("match_results").select("*"),
+            sb.from("pronostics").select("*"),
+            sb.from("bonus_results").select("*"),
+            sb.from("bonus_pronostics").select("*"),
           ]);
 
-          // Participants — seed defaults on first use
-          let parts = (pData || []).map(p => ({ id: p.id, name: p.name, color: p.color }));
-          if (parts.length === 0) {
-            await db.from("participants").insert(DEFAULT_PARTICIPANTS);
-            parts = DEFAULT_PARTICIPANTS;
-          }
-          setParticipants(parts);
+          participants.value = (pData || []).map(p => ({ id: p.id, name: p.name, color: p.color }));
+          activeParticipant.value = prof.participant_id;
 
-          // Match results
           const resultMap = {};
-          (mrData || []).forEach(r => {
-            resultMap[r.match_id] = {
-              home: r.result_home !== null ? String(r.result_home) : "",
-              away: r.result_away !== null ? String(r.result_away) : "",
-            };
-          });
-          setMatches(buildDefaultMatches().map(m => ({ ...m, result: resultMap[m.id] || { home: "", away: "" } })));
+          (mrData || []).forEach(r => { resultMap[r.match_id] = { home: r.result_home !== null ? String(r.result_home) : "", away: r.result_away !== null ? String(r.result_away) : "" }; });
+          matches.value = buildDefaultMatches().map(m => ({ ...m, result: resultMap[m.id] || { home: "", away: "" } }));
 
-          // Pronostics + jokers
           const pronos = {}, jkrs = {};
           (prData || []).forEach(p => {
             if (!pronos[p.participant_id]) pronos[p.participant_id] = {};
-            pronos[p.participant_id][p.match_id] = {
-              home: p.prono_home !== null ? String(p.prono_home) : "",
-              away: p.prono_away !== null ? String(p.prono_away) : "",
-            };
+            pronos[p.participant_id][p.match_id] = { home: p.prono_home !== null ? String(p.prono_home) : "", away: p.prono_away !== null ? String(p.prono_away) : "" };
             if (p.is_joker) jkrs[p.participant_id] = p.match_id;
           });
-          setPronostics(pronos);
-          setJokers(jkrs);
+          pronostics.value = pronos;
+          jokers.value = jkrs;
 
-          // Bonus
           const bRes = {};
           (brData || []).forEach(r => { bRes[r.bonus_key] = r.value; });
-          setBonusResults(bRes);
+          bonusResults.value = bRes;
 
           const bPronos = {};
           (bpData || []).forEach(p => {
             if (!bPronos[p.participant_id]) bPronos[p.participant_id] = {};
             bPronos[p.participant_id][p.bonus_key] = p.value;
           });
-          setBonusPronostics(bPronos);
+          bonusPronostics.value = bPronos;
 
-          setLoaded(true);
+          loaded.value = true;
+
+          if (realtimeChannel) sb.removeChannel(realtimeChannel);
+          realtimeChannel = sb.channel("mfga-rt")
+            .on("postgres_changes", { event: "*", schema: "public", table: "participants" }, ({ eventType, new: n, old: o }) => {
+              if (eventType === "INSERT") participants.value = participants.value.find(x => x.id === n.id) ? participants.value : [...participants.value, { id: n.id, name: n.name, color: n.color }];
+              else if (eventType === "DELETE") participants.value = participants.value.filter(x => x.id !== o.id);
+            })
+            .on("postgres_changes", { event: "*", schema: "public", table: "match_results" }, ({ eventType, new: r }) => {
+              if (eventType === "INSERT" || eventType === "UPDATE")
+                matches.value = matches.value.map(m => m.id === r.match_id ? { ...m, result: { home: r.result_home !== null ? String(r.result_home) : "", away: r.result_away !== null ? String(r.result_away) : "" } } : m);
+            })
+            .on("postgres_changes", { event: "*", schema: "public", table: "pronostics" }, ({ eventType, new: p }) => {
+              if (eventType === "INSERT" || eventType === "UPDATE") {
+                pronostics.value = { ...pronostics.value, [p.participant_id]: { ...pronostics.value[p.participant_id], [p.match_id]: { home: p.prono_home !== null ? String(p.prono_home) : "", away: p.prono_away !== null ? String(p.prono_away) : "" } } };
+                jokers.value = (() => { const j = { ...jokers.value }; if (p.is_joker) j[p.participant_id] = p.match_id; else if (j[p.participant_id] === p.match_id) j[p.participant_id] = null; return j; })();
+              }
+            })
+            .on("postgres_changes", { event: "*", schema: "public", table: "bonus_results" }, ({ eventType, new: r }) => {
+              if (eventType === "INSERT" || eventType === "UPDATE") bonusResults.value = { ...bonusResults.value, [r.bonus_key]: r.value };
+            })
+            .on("postgres_changes", { event: "*", schema: "public", table: "bonus_pronostics" }, ({ eventType, new: p }) => {
+              if (eventType === "INSERT" || eventType === "UPDATE") bonusPronostics.value = { ...bonusPronostics.value, [p.participant_id]: { ...bonusPronostics.value[p.participant_id], [p.bonus_key]: p.value } };
+            })
+            .subscribe(status => { rtStatus.value = status === "SUBSCRIBED" ? "connected" : "connecting"; });
         }
-        load();
-      }, []);
 
-      // Default active participant
-      useEffect(() => {
-        if (participants.length > 0 && !activeParticipant) {
-          setActiveParticipant(participants[0].id);
-        }
-      }, [participants, activeParticipant]);
-
-      // ── Realtime subscriptions ────────────────────────────────────────────
-      useEffect(() => {
-        if (!loaded) return;
-        const db = sb.current;
-
-        const ch = db.channel("mfga-rt")
-          .on("postgres_changes", { event: "*", schema: "public", table: "participants" }, ({ eventType, new: n, old: o }) => {
-            if (eventType === "INSERT")
-              setParticipants(prev => prev.find(x => x.id === n.id) ? prev : [...prev, { id: n.id, name: n.name, color: n.color }]);
-            else if (eventType === "DELETE")
-              setParticipants(prev => prev.filter(x => x.id !== o.id));
-          })
-          .on("postgres_changes", { event: "*", schema: "public", table: "match_results" }, ({ eventType, new: r }) => {
-            if (eventType === "INSERT" || eventType === "UPDATE")
-              setMatches(prev => prev.map(m => m.id === r.match_id ? {
-                ...m,
-                result: {
-                  home: r.result_home !== null ? String(r.result_home) : "",
-                  away: r.result_away !== null ? String(r.result_away) : "",
-                }
-              } : m));
-          })
-          .on("postgres_changes", { event: "*", schema: "public", table: "pronostics" }, ({ eventType, new: p }) => {
-            if (eventType === "INSERT" || eventType === "UPDATE") {
-              setPronostics(prev => ({
-                ...prev,
-                [p.participant_id]: {
-                  ...prev[p.participant_id],
-                  [p.match_id]: {
-                    home: p.prono_home !== null ? String(p.prono_home) : "",
-                    away: p.prono_away !== null ? String(p.prono_away) : "",
-                  }
-                }
-              }));
-              setJokers(prev => {
-                const next = { ...prev };
-                if (p.is_joker) next[p.participant_id] = p.match_id;
-                else if (next[p.participant_id] === p.match_id) next[p.participant_id] = null;
-                return next;
-              });
+        // ── Session listener ──────────────────────────────────────────────────
+        onMounted(() => {
+          sb.auth.onAuthStateChange(async (event, newSession) => {
+            session.value = newSession;
+            if (newSession && (event === "SIGNED_IN" || event === "INITIAL_SESSION") && !loaded.value) {
+              await loadData(newSession.user.id);
+            } else if (event === "SIGNED_OUT") {
+              loaded.value = false;
             }
-          })
-          .on("postgres_changes", { event: "*", schema: "public", table: "bonus_results" }, ({ eventType, new: r }) => {
-            if (eventType === "INSERT" || eventType === "UPDATE")
-              setBonusResults(prev => ({ ...prev, [r.bonus_key]: r.value }));
-          })
-          .on("postgres_changes", { event: "*", schema: "public", table: "bonus_pronostics" }, ({ eventType, new: p }) => {
-            if (eventType === "INSERT" || eventType === "UPDATE")
-              setBonusPronostics(prev => ({
-                ...prev,
-                [p.participant_id]: { ...prev[p.participant_id], [p.bonus_key]: p.value }
-              }));
-          })
-          .subscribe(status => setRtStatus(status === "SUBSCRIBED" ? "connected" : "connecting"));
+          });
+        });
 
-        return () => db.removeChannel(ch);
-      }, [loaded]);
+        watch(authMode, () => { authError.value = ""; });
 
-      // ── Helpers ───────────────────────────────────────────────────────────
-      const flash = () => { setSaveMsg("✓ Sauvegardé"); setTimeout(() => setSaveMsg(""), 2000); };
-
-      const debounce = (key, fn, delay = 600) => {
-        if (writeTimers.current[key]) clearTimeout(writeTimers.current[key]);
-        writeTimers.current[key] = setTimeout(async () => { await fn(); flash(); }, delay);
-      };
-
-      // ── Actions ───────────────────────────────────────────────────────────
-      const addParticipant = async () => {
-        if (!newParticipant.trim()) return;
-        const newP = {
-          id: Date.now(),
-          name: newParticipant.trim(),
-          color: PARTICIPANT_COLORS[participants.length % PARTICIPANT_COLORS.length],
+        return {
+          session, profile, authMode, authUsername, authPassword, authError, authLoading,
+          doRegister, doLogin, doLogout,
+          loaded, saveMsg, rtStatus, tab, participants, matches, pronostics,
+          bonusPronostics, bonusResults, jokers, activeGroup, activeParticipant,
+          myParticipantId, canEditProno, isMe,
+          GROUPS, BONUS_TYPES, TABS, C, medalColors, medalIcons,
+          rtColor, rtDot, groupMatches, rankings,
+          sCard, sInput, sScoreInput, sLabel,
+          tabStyle, btnStyle, badgeStyle, groupBtnStyle, pBtnStyle,
+          getFlag, calcScore, setMatchResult, setProno, setBonus, setBonusResult, toggleJoker,
+          getProno, isJokerMatch, getMatchPts, ptColor, getBonusProno,
+          isBonusCorrect, matchPtsForRanking, matchesPlayedCount, activeParticipantName,
         };
-        setParticipants(p => [...p, newP]);
-        setNewParticipant("");
-        await sb.current.from("participants").insert({ id: newP.id, name: newP.name, color: newP.color });
-        flash();
-      };
+      },
 
-      const removeParticipant = async (id) => {
-        setParticipants(p => p.filter(x => x.id !== id));
-        await sb.current.from("participants").delete().eq("id", id);
-        flash();
-      };
+      template: `
+        <!-- ── Auth screen ── -->
+        <div v-if="!session" :style="{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: 'Syne, sans-serif', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px' }">
+          <div style="text-align: center; margin-bottom: 32px">
+            <svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom: 12px">
+              <circle cx="50" cy="50" r="48" fill="#1e3a8a" stroke="#3b82f6" stroke-width="2"/>
+              <text x="50" y="36" text-anchor="middle" fill="white" font-size="13" font-weight="800" font-family="Syne,sans-serif">FIFA</text>
+              <text x="50" y="54" text-anchor="middle" fill="#f59e0b" font-size="18" font-weight="800" font-family="Syne,sans-serif">2026</text>
+              <text x="50" y="70" text-anchor="middle" fill="white" font-size="9" font-family="Syne,sans-serif">🇺🇸🇨🇦🇲🇽</text>
+              <path d="M20 78 Q50 90 80 78" stroke="#f59e0b" stroke-width="2" fill="none"/>
+            </svg>
+            <div :style="{ fontSize: '22px', fontWeight: 800, background: 'linear-gradient(90deg, #60a5fa, #a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }">🐐 Make Football Goat Again</div>
+            <div :style="{ color: '#f59e0b', fontSize: '11px', fontWeight: 600, marginTop: '4px' }">FIFA 2026 · Pronostics entre amis</div>
+          </div>
 
-      const setMatchResult = (matchId, side, val) => {
-        setMatches(ms => ms.map(m => {
-          if (m.id !== matchId) return m;
-          const result = { ...m.result, [side]: val };
-          latest.current._pendingResult = latest.current._pendingResult || {};
-          latest.current._pendingResult[matchId] = result;
-          return { ...m, result };
-        }));
-        debounce(`mr_${matchId}`, async () => {
-          const result = (latest.current._pendingResult || {})[matchId];
-          if (!result) return;
-          await sb.current.from("match_results").upsert({
-            match_id: matchId,
-            result_home: result.home === "" ? null : parseInt(result.home),
-            result_away: result.away === "" ? null : parseInt(result.away),
-          }, { onConflict: "match_id" });
-        });
-      };
+          <div :style="{ background: C.card, border: '1px solid ' + C.border, borderRadius: '16px', padding: '28px 24px', width: '100%', maxWidth: '360px' }">
+            <div style="display: flex; gap: 4px; margin-bottom: 24px; background: #0f172a; border-radius: '10px'; padding: '4px'">
+              <button
+                :style="{ flex: 1, padding: '9px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: '13px', background: authMode === 'login' ? C.accent : 'transparent', color: authMode === 'login' ? '#fff' : C.muted, transition: 'all .15s' }"
+                @click="authMode = 'login'">Se connecter</button>
+              <button
+                :style="{ flex: 1, padding: '9px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: '13px', background: authMode === 'register' ? C.accent : 'transparent', color: authMode === 'register' ? '#fff' : C.muted, transition: 'all .15s' }"
+                @click="authMode = 'register'">S'inscrire</button>
+            </div>
 
-      const setProno = (pid, matchId, side, val) => {
-        setPronostics(p => {
-          const updated = { ...p, [pid]: { ...p[pid], [matchId]: { ...(p[pid]?.[matchId] || {}), [side]: val } } };
-          latest.current._pendingProno = latest.current._pendingProno || {};
-          latest.current._pendingProno[`${pid}_${matchId}`] = updated[pid][matchId];
-          return updated;
-        });
-        debounce(`prono_${pid}_${matchId}`, async () => {
-          const prono = (latest.current._pendingProno || {})[`${pid}_${matchId}`];
-          if (!prono) return;
-          const isJoker = latest.current.jokers?.[pid] === matchId;
-          await sb.current.from("pronostics").upsert({
-            participant_id: pid,
-            match_id: matchId,
-            prono_home: prono.home === "" ? null : parseInt(prono.home),
-            prono_away: prono.away === "" ? null : parseInt(prono.away),
-            is_joker: !!isJoker,
-          }, { onConflict: "participant_id,match_id" });
-        });
-      };
+            <div style="margin-bottom: 14px">
+              <div :style="sLabel">Nom d'utilisateur</div>
+              <input :style="sInput" placeholder="goat42"
+                :value="authUsername" @input="authUsername = $event.target.value; authError = ''"
+                @keydown.enter="authMode === 'login' ? doLogin() : doRegister()" />
+              <div v-if="authMode === 'register'" :style="{ fontSize: '11px', color: C.muted, marginTop: '4px' }">Lettres minuscules, chiffres et _ uniquement</div>
+            </div>
 
-      const setBonus = async (pid, bonusId, idx, val) => {
-        const key = `${bonusId}_${idx}`;
-        setBonusPronostics(p => ({ ...p, [pid]: { ...p[pid], [key]: val } }));
-        debounce(`bp_${pid}_${key}`, async () => {
-          await sb.current.from("bonus_pronostics").upsert(
-            { participant_id: pid, bonus_key: key, value: val },
-            { onConflict: "participant_id,bonus_key" }
-          );
-        });
-      };
+            <div style="margin-bottom: 20px">
+              <div :style="sLabel">Mot de passe</div>
+              <input :style="sInput" type="password" placeholder="••••••••"
+                :value="authPassword" @input="authPassword = $event.target.value; authError = ''"
+                @keydown.enter="authMode === 'login' ? doLogin() : doRegister()" />
+              <div v-if="authMode === 'register'" :style="{ fontSize: '11px', color: C.muted, marginTop: '4px' }">6 caractères minimum</div>
+            </div>
 
-      const setBonusResult = (bonusId, idx, val) => {
-        const key = `${bonusId}_${idx}`;
-        setBonusResults(p => ({ ...p, [key]: val }));
-        debounce(`br_${key}`, async () => {
-          await sb.current.from("bonus_results").upsert(
-            { bonus_key: key, value: val },
-            { onConflict: "bonus_key" }
-          );
-        });
-      };
+            <button
+              :style="{ ...btnStyle(), width: '100%', padding: '11px', fontSize: '14px', opacity: authLoading ? 0.7 : 1, cursor: authLoading ? 'not-allowed' : 'pointer' }"
+              :disabled="authLoading"
+              @click="authMode === 'login' ? doLogin() : doRegister()">
+              {{ authLoading ? '…' : (authMode === 'login' ? 'Se connecter' : 'Créer mon compte') }}
+            </button>
 
-      const toggleJoker = async (pid, matchId) => {
-        const isCurrentJoker = latest.current.jokers?.[pid] === matchId;
-        const oldJokerMatchId = latest.current.jokers?.[pid];
-        const newJokerMatchId = isCurrentJoker ? null : matchId;
-
-        setJokers(j => ({ ...j, [pid]: newJokerMatchId }));
-
-        // Remove old joker in DB
-        if (oldJokerMatchId && oldJokerMatchId !== matchId) {
-          const oldProno = latest.current.pronostics?.[pid]?.[oldJokerMatchId] || {};
-          await sb.current.from("pronostics").upsert({
-            participant_id: pid, match_id: oldJokerMatchId,
-            prono_home: oldProno.home === "" ? null : parseInt(oldProno.home),
-            prono_away: oldProno.away === "" ? null : parseInt(oldProno.away),
-            is_joker: false,
-          }, { onConflict: "participant_id,match_id" });
-        }
-
-        // Upsert current match
-        const prono = latest.current.pronostics?.[pid]?.[matchId] || {};
-        await sb.current.from("pronostics").upsert({
-          participant_id: pid, match_id: matchId,
-          prono_home: prono.home === "" ? null : parseInt(prono.home),
-          prono_away: prono.away === "" ? null : parseInt(prono.away),
-          is_joker: !isCurrentJoker,
-        }, { onConflict: "participant_id,match_id" });
-        flash();
-      };
-
-      // ── Scoring ───────────────────────────────────────────────────────────
-      const calcScore = (pid) => {
-        let total = 0, exactCount = 0;
-        matches.forEach(m => {
-          if (m.result.home === "" || m.result.away === "") return;
-          const pts = calcMatchPoints(pronostics[pid]?.[m.id], m.result);
-          const isJoker = jokers[pid] === m.id;
-          if (pts === 3) exactCount++;
-          total += isJoker ? pts * 2 : pts;
-        });
-        BONUS_TYPES.forEach(b => {
-          for (let i = 0; i < b.count; i++) {
-            const key = `${b.id}_${i}`;
-            const res = bonusResults[key], prono = bonusPronostics[pid]?.[key];
-            if (res && prono && res.toLowerCase().trim() === prono.toLowerCase().trim()) total += b.points;
-          }
-        });
-        return { total, exactCount };
-      };
-
-      const rankings = participants.map(p => ({ ...p, ...calcScore(p.id) })).sort((a, b) => b.total - a.total || b.exactCount - a.exactCount);
-      const groupMatches = matches.filter(m => m.group === activeGroup);
-
-      // ── Styles ────────────────────────────────────────────────────────────
-      const C = {
-        bg: "#0a0e1a", card: "#111827", border: "#1e293b", accent: "#3b82f6",
-        gold: "#f59e0b", silver: "#94a3b8", bronze: "#cd7c2f",
-        text: "#f1f5f9", muted: "#64748b", green: "#22c55e", yellow: "#eab308",
-      };
-      const s = {
-        app:        { minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "'Syne', sans-serif", paddingBottom: 40 },
-        header:     { background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)", borderBottom: `1px solid ${C.border}`, padding: "20px 20px 0" },
-        title:      { fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px", background: "linear-gradient(90deg, #60a5fa, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" },
-        sub:        { color: "#f59e0b", fontSize: 11, fontWeight: 600, marginTop: 2, letterSpacing: 0.5 },
-        meta:       { color: C.muted, fontSize: 12, marginBottom: 14, marginTop: 6 },
-        tabs:       { display: "flex", gap: 4, marginTop: 4 },
-        tab:    (a) => ({ padding: "10px 16px", background: a ? C.accent : "transparent", color: a ? "#fff" : C.muted, border: "none", borderRadius: "8px 8px 0 0", cursor: "pointer", fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: 13 }),
-        content:    { maxWidth: 800, margin: "0 auto", padding: "16px 14px" },
-        card:       { background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14, marginBottom: 10 },
-        input:      { background: "#1e293b", border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, padding: "8px 12px", fontFamily: "'Syne', sans-serif", fontSize: 13, outline: "none", width: "100%" },
-        btn:    (c = C.accent) => ({ background: c, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 13 }),
-        badge:  (c) => ({ background: c + "22", color: c, border: `1px solid ${c}44`, borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 700 }),
-        scoreInput: { background: "#1e293b", border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, padding: "6px 0", fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, textAlign: "center", width: 44, outline: "none" },
-        groupBtn: (a) => ({ padding: "6px 11px", background: a ? C.accent : "#1e293b", color: a ? "#fff" : C.muted, border: `1px solid ${a ? C.accent : C.border}`, borderRadius: 8, cursor: "pointer", fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: 12 }),
-        pBtn:   (a, c) => ({ padding: "6px 13px", background: a ? c : "#1e293b", color: a ? "#fff" : C.muted, border: `1px solid ${a ? c : C.border}`, borderRadius: 20, cursor: "pointer", fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: 12 }),
-        label:      { color: C.muted, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "block" },
-      };
-      const medalColors = ["#f59e0b", "#94a3b8", "#cd7c2f"];
-      const medalIcons  = ["🥇", "🥈", "🥉"];
-      const rtColor     = rtStatus === "connected" ? C.green : C.yellow;
-      const rtDot       = rtStatus === "connected" ? "🟢" : "🟡";
-
-      if (!loaded) return (
-        <div style={{ ...s.app, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
-          <div style={{ fontSize: 40 }}>⚽</div>
-          <div style={{ color: C.muted, fontSize: 14 }}>Connexion à Supabase...</div>
+            <div v-if="authError" :style="{ background: '#ef444418', border: '1px solid #ef444433', borderRadius: '8px', padding: '10px 12px', color: '#ef4444', fontSize: '13px', marginTop: '14px', lineHeight: 1.5 }">
+              {{ authError }}
+            </div>
+          </div>
         </div>
-      );
 
-      return (
-        <div style={s.app}>
-          {/* ── Header ── */}
-          <div style={s.header}>
-            <div style={{ maxWidth: 800, margin: "0 auto" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 2 }}>
-                <div style={{ flexShrink: 0 }}>
+        <!-- ── Loading screen ── -->
+        <div v-else-if="!loaded" :style="{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: 'Syne, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px' }">
+          <div style="font-size: 40px">⚽</div>
+          <div :style="{ color: C.muted, fontSize: '14px' }">Chargement…</div>
+        </div>
+
+        <!-- ── Main app ── -->
+        <div v-else :style="{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: 'Syne, sans-serif', paddingBottom: '40px' }">
+
+          <!-- Header -->
+          <div :style="{ background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)', borderBottom: '1px solid ' + C.border, padding: '20px 20px 0' }">
+            <div style="max-width: 800px; margin: 0 auto">
+              <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 2px">
+                <div style="flex-shrink: 0">
                   <svg width="50" height="50" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="50" cy="50" r="48" fill="#1e3a8a" stroke="#3b82f6" strokeWidth="2"/>
-                    <text x="50" y="36" textAnchor="middle" fill="white" fontSize="13" fontWeight="800" fontFamily="Syne,sans-serif">FIFA</text>
-                    <text x="50" y="54" textAnchor="middle" fill="#f59e0b" fontSize="18" fontWeight="800" fontFamily="Syne,sans-serif">2026</text>
-                    <text x="50" y="70" textAnchor="middle" fill="white" fontSize="9" fontFamily="Syne,sans-serif">🇺🇸🇨🇦🇲🇽</text>
-                    <path d="M20 78 Q50 90 80 78" stroke="#f59e0b" strokeWidth="2" fill="none"/>
+                    <circle cx="50" cy="50" r="48" fill="#1e3a8a" stroke="#3b82f6" stroke-width="2"/>
+                    <text x="50" y="36" text-anchor="middle" fill="white" font-size="13" font-weight="800" font-family="Syne,sans-serif">FIFA</text>
+                    <text x="50" y="54" text-anchor="middle" fill="#f59e0b" font-size="18" font-weight="800" font-family="Syne,sans-serif">2026</text>
+                    <text x="50" y="70" text-anchor="middle" fill="white" font-size="9" font-family="Syne,sans-serif">🇺🇸🇨🇦🇲🇽</text>
+                    <path d="M20 78 Q50 90 80 78" stroke="#f59e0b" stroke-width="2" fill="none"/>
                   </svg>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={s.title}>🐐 Make Football Goat Again 🦅</div>
-                  <div style={s.sub}>La compét' d'Infantino, bénie par Trump, gagnée par les chèvres</div>
+                <div style="flex: 1">
+                  <div :style="{ fontSize: '22px', fontWeight: 800, letterSpacing: '-0.5px', background: 'linear-gradient(90deg, #60a5fa, #a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }">🐐 Make Football Goat Again 🦅</div>
+                  <div :style="{ color: '#f59e0b', fontSize: '11px', fontWeight: 600, marginTop: '2px' }">La compét' d'Infantino, bénie par Trump, gagnée par les chèvres</div>
                 </div>
-                <div style={{ fontSize: 11, color: saveMsg ? C.green : rtColor, fontWeight: 600, flexShrink: 0, minWidth: 100, textAlign: "right" }}>
-                  {saveMsg || `${rtDot} ${rtStatus === "connected" ? "En direct" : "Connexion..."}`}
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0">
+                  <div :style="{ fontSize: '11px', color: saveMsg ? C.green : rtColor, fontWeight: 600 }">
+                    {{ saveMsg || (rtDot + ' ' + (rtStatus === 'connected' ? 'En direct' : 'Connexion…')) }}
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 8px">
+                    <span :style="{ fontSize: '12px', color: C.muted }">👤 {{ profile?.username }}</span>
+                    <button @click="doLogout" :style="{ ...btnStyle('#374151'), padding: '4px 10px', fontSize: '11px' }">Déconnexion</button>
+                  </div>
                 </div>
               </div>
-              <div style={s.meta}>{participants.length} participant{participants.length > 1 ? "s" : ""} · {matches.length} matchs · données partagées en temps réel</div>
-              <div style={s.tabs}>
-                {TABS.map((t, i) => <button key={i} style={s.tab(tab === i)} onClick={() => setTab(i)}>{t}</button>)}
+              <div :style="{ color: C.muted, fontSize: '12px', marginBottom: '14px', marginTop: '6px' }">{{ participants.length }} participant{{ participants.length > 1 ? 's' : '' }} · {{ matches.length }} matchs · données partagées en temps réel</div>
+              <div style="display: flex; gap: 4px; margin-top: 4px">
+                <button v-for="(t, i) in TABS" :key="i" :style="tabStyle(tab === i)" @click="tab = i">{{ t }}</button>
               </div>
             </div>
           </div>
 
-          <div style={s.content}>
+          <div style="max-width: 800px; margin: 0 auto; padding: 16px 14px">
 
-            {/* ── TAB 0 — Participants ── */}
-            {tab === 0 && (
-              <div>
-                <div style={{ ...s.card, marginBottom: 14 }}>
-                  <div style={s.label}>Ajouter un participant</div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <input style={{ ...s.input, flex: 1 }} placeholder="Prénom ou pseudo..."
-                      value={newParticipant} onChange={e => setNewParticipant(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && addParticipant()} />
-                    <button style={s.btn()} onClick={addParticipant}>+ Ajouter</button>
-                  </div>
-                </div>
-                {participants.map(p => (
-                  <div key={p.id} style={{ ...s.card, display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ width: 12, height: 12, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
-                    <div style={{ flex: 1, fontWeight: 700, fontSize: 15 }}>{p.name}</div>
-                    <div style={s.badge(p.color)}>{calcScore(p.id).total} pts</div>
-                    <button style={{ ...s.btn("#ef4444"), padding: "4px 10px", fontSize: 12 }} onClick={() => removeParticipant(p.id)}>✕</button>
-                  </div>
-                ))}
-                <div style={{ ...s.card, marginTop: 20, background: "#0f172a", border: "1px solid #1e3a5f" }}>
-                  <div style={{ fontSize: 13, color: "#60a5fa", fontWeight: 700, marginBottom: 8 }}>📋 Règles du scoring</div>
-                  <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.9 }}>
-                    <div>🎯 <b style={{ color: C.text }}>Score exact</b> → 3 pts</div>
-                    <div>✅ <b style={{ color: C.text }}>Bon résultat</b> (V/N/D sans score exact) → 1 pt</div>
-                    <div>❌ <b style={{ color: C.text }}>Mauvais résultat</b> → 0 pt</div>
-                    <div>🃏 <b style={{ color: C.text }}>Match Joker</b> → points × 2 (1 joker par participant)</div>
-                    <div style={{ marginTop: 6, borderTop: `1px solid ${C.border}`, paddingTop: 6 }}>+ Bonus pronostics de début de tournoi (voir onglet Bonus)</div>
-                  </div>
+            <!-- TAB 0 — Participants -->
+            <div v-if="tab === 0">
+              <div v-for="p in participants" :key="p.id" :style="{ ...sCard, display: 'flex', alignItems: 'center', gap: '12px' }">
+                <div :style="{ width: '12px', height: '12px', borderRadius: '50%', background: p.color, flexShrink: 0 }"></div>
+                <div style="flex: 1; font-weight: 700; font-size: 15px">{{ p.name }}</div>
+                <div v-if="isMe(p.id)" :style="{ fontSize: '11px', color: C.accent, fontWeight: 700, background: C.accent + '18', border: '1px solid ' + C.accent + '44', borderRadius: '6px', padding: '2px 7px' }">Moi</div>
+                <div :style="badgeStyle(p.color)">{{ calcScore(p.id).total }} pts</div>
+              </div>
+              <div :style="{ ...sCard, marginTop: '20px', background: '#0f172a', border: '1px solid #1e3a5f' }">
+                <div style="font-size: 13px; color: #60a5fa; font-weight: 700; margin-bottom: 8px">📋 Règles du scoring</div>
+                <div :style="{ fontSize: '12px', color: C.muted, lineHeight: 1.9 }">
+                  <div>🎯 <b :style="{ color: C.text }">Score exact</b> → 3 pts</div>
+                  <div>✅ <b :style="{ color: C.text }">Bon résultat</b> (V/N/D sans score exact) → 1 pt</div>
+                  <div>❌ <b :style="{ color: C.text }">Mauvais résultat</b> → 0 pt</div>
+                  <div>🃏 <b :style="{ color: C.text }">Match Joker</b> → points × 2 (1 joker par participant)</div>
+                  <div :style="{ marginTop: '6px', borderTop: '1px solid ' + C.border, paddingTop: '6px' }">+ Bonus pronostics de début de tournoi (voir onglet Bonus)</div>
                 </div>
               </div>
-            )}
+            </div>
 
-            {/* ── TAB 1 — Matchs ── */}
-            {tab === 1 && (
-              <div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-                  {GROUPS.map(g => <button key={g.id} style={s.groupBtn(activeGroup === g.id)} onClick={() => setActiveGroup(g.id)}>Groupe {g.id}</button>)}
-                </div>
-                <div style={{ marginBottom: 14 }}>
-                  <div style={s.label}>Pronostics de</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {participants.map(p => <button key={p.id} style={s.pBtn(activeParticipant === p.id, p.color)} onClick={() => setActiveParticipant(p.id)}>{p.name}</button>)}
-                  </div>
-                </div>
-                {groupMatches.map(m => {
-                  const prono   = pronostics[activeParticipant]?.[m.id] || {};
-                  const pts     = calcMatchPoints(prono, m.result);
-                  const hasRes  = m.result.home !== "" && m.result.away !== "";
-                  const isJoker = jokers[activeParticipant] === m.id;
-                  const finalPts = isJoker ? pts * 2 : pts;
-                  const ptColor = pts === 3 ? C.green : pts === 1 ? C.yellow : hasRes ? "#ef4444" : C.muted;
-                  return (
-                    <div key={m.id} style={{ ...s.card, position: "relative" }}>
-                      {isJoker && <div style={{ position: "absolute", top: 8, right: 8, fontSize: 11, background: "#f59e0b22", color: "#f59e0b", border: "1px solid #f59e0b44", borderRadius: 6, padding: "2px 7px", fontWeight: 700 }}>🃏 JOKER ×2</div>}
-                      <div style={{ fontSize: 11, color: C.muted, marginBottom: 8, fontWeight: 600 }}>GROUPE {m.group}</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 8, alignItems: "center" }}>
-                        <div style={{ textAlign: "right", fontWeight: 700, fontSize: 13 }}>{getFlag(m.home)} {m.home}</div>
-                        <div style={{ textAlign: "center", color: C.muted, fontSize: 11, fontWeight: 700 }}>VS</div>
-                        <div style={{ fontWeight: 700, fontSize: 13 }}>{getFlag(m.away)} {m.away}</div>
-                      </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
-                        <div style={{ background: "#0f172a", borderRadius: 8, padding: 10 }}>
-                          <div style={s.label}>Pronostic {participants.find(p => p.id === activeParticipant)?.name}</div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
-                            <input style={s.scoreInput} type="number" min="0" max="20" placeholder="–" value={prono.home ?? ""}
-                              onChange={e => setProno(activeParticipant, m.id, "home", e.target.value)} />
-                            <span style={{ color: C.muted, fontWeight: 700 }}>–</span>
-                            <input style={s.scoreInput} type="number" min="0" max="20" placeholder="–" value={prono.away ?? ""}
-                              onChange={e => setProno(activeParticipant, m.id, "away", e.target.value)} />
-                          </div>
-                        </div>
-                        <div style={{ background: "#0f172a", borderRadius: 8, padding: 10 }}>
-                          <div style={s.label}>Résultat réel</div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
-                            <input style={s.scoreInput} type="number" min="0" max="20" placeholder="–" value={m.result.home}
-                              onChange={e => setMatchResult(m.id, "home", e.target.value)} />
-                            <span style={{ color: C.muted, fontWeight: 700 }}>–</span>
-                            <input style={s.scoreInput} type="number" min="0" max="20" placeholder="–" value={m.result.away}
-                              onChange={e => setMatchResult(m.id, "away", e.target.value)} />
-                          </div>
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-                        <button style={{ ...s.btn(isJoker ? "#f59e0b" : "#1e293b"), fontSize: 11, padding: "4px 10px", border: isJoker ? "none" : `1px solid ${C.border}` }}
-                          onClick={() => toggleJoker(activeParticipant, m.id)}>
-                          🃏 {isJoker ? "Retirer Joker" : "Joker"}
-                        </button>
-                        {hasRes && <div style={{ fontWeight: 800, fontSize: 14, color: ptColor }}>+{finalPts} pts {isJoker && pts > 0 ? `(${pts}×2)` : ""}</div>}
-                      </div>
-                    </div>
-                  );
-                })}
+            <!-- TAB 1 — Matchs -->
+            <div v-if="tab === 1">
+              <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px">
+                <button v-for="g in GROUPS" :key="g.id" :style="groupBtnStyle(activeGroup === g.id)" @click="activeGroup = g.id">Groupe {{ g.id }}</button>
               </div>
-            )}
-
-            {/* ── TAB 2 — Bonus ── */}
-            {tab === 2 && (
-              <div>
-                <div style={{ color: C.muted, fontSize: 13, marginBottom: 14 }}>
-                  Pronostics à rendre avant le coup d'envoi du tournoi. Saisissez les prédictions de chaque participant, puis entrez les vrais résultats quand ils sont connus.
+              <div style="margin-bottom: 14px">
+                <div :style="sLabel">Pronostics de</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px">
+                  <button v-for="p in participants" :key="p.id" :style="pBtnStyle(activeParticipant === p.id, p.color)" @click="activeParticipant = p.id">{{ p.name }}{{ isMe(p.id) ? ' (moi)' : '' }}</button>
                 </div>
-                {BONUS_TYPES.map(b => (
-                  <div key={b.id} style={s.card}>
-                    <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{b.label}</div>
-                    <div style={{ ...s.badge(C.gold), display: "inline-block", marginBottom: 12 }}>+{b.points} pts</div>
-                    {Array.from({ length: b.count }).map((_, i) => (
-                      <div key={i} style={{ marginBottom: b.count > 1 ? 12 : 0 }}>
-                        {b.count > 1 && <div style={{ ...s.label, marginBottom: 6 }}>#{i + 1}</div>}
-                        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-                          <div style={{ fontSize: 12, color: C.green, fontWeight: 700, width: 70, flexShrink: 0 }}>✅ Résultat</div>
-                          <input style={s.input} placeholder="Résultat réel..."
-                            value={bonusResults[`${b.id}_${i}`] || ""}
-                            onChange={e => setBonusResult(b.id, i, e.target.value)} />
-                        </div>
-                        {participants.map(p => {
-                          const key = `${b.id}_${i}`;
-                          const prono = bonusPronostics[p.id]?.[key] || "";
-                          const res = bonusResults[key];
-                          const correct = res && prono && res.toLowerCase().trim() === prono.toLowerCase().trim();
-                          return (
-                            <div key={p.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-                              <div style={{ width: 8, height: 8, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
-                              <div style={{ fontSize: 12, fontWeight: 600, width: 70, flexShrink: 0, color: C.text }}>{p.name}</div>
-                              <input style={{ ...s.input, borderColor: correct ? C.green : C.border }}
-                                placeholder={`Pronostic de ${p.name}...`} value={prono}
-                                onChange={e => setBonus(p.id, b.id, i, e.target.value)} />
-                              {correct && <span style={{ color: C.green, fontWeight: 700, fontSize: 12, flexShrink: 0 }}>+{b.points}pts</span>}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                ))}
               </div>
-            )}
-
-            {/* ── TAB 3 — Classement ── */}
-            {tab === 3 && (
-              <div>
-                <div style={{ ...s.card, background: "linear-gradient(135deg, #1e1b4b, #0f172a)", marginBottom: 16, textAlign: "center", padding: "20px 16px" }}>
-                  <div style={{ fontSize: 11, color: C.muted, fontWeight: 700, letterSpacing: 2, marginBottom: 4 }}>CLASSEMENT GÉNÉRAL</div>
-                  <div style={{ fontSize: 12, color: C.muted }}>Mis à jour en temps réel · partagé avec tous</div>
+              <div v-if="!canEditProno" :style="{ background: '#1e293b', border: '1px solid ' + C.border, borderRadius: '8px', padding: '8px 14px', marginBottom: '12px', fontSize: '12px', color: C.muted, display: 'flex', alignItems: 'center', gap: '6px' }">
+                👁 Mode lecture seule — vous consultez les pronostics de {{ activeParticipantName() }}
+              </div>
+              <div v-for="m in groupMatches" :key="m.id" :style="{ ...sCard, position: 'relative' }">
+                <div v-if="isJokerMatch(activeParticipant, m.id)" :style="{ position: 'absolute', top: '8px', right: '8px', fontSize: '11px', background: '#f59e0b22', color: '#f59e0b', border: '1px solid #f59e0b44', borderRadius: '6px', padding: '2px 7px', fontWeight: 700 }">🃏 JOKER ×2</div>
+                <div :style="{ fontSize: '11px', color: C.muted, marginBottom: '8px', fontWeight: 600 }">GROUPE {{ m.group }}</div>
+                <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center">
+                  <div style="text-align: right; font-weight: 700; font-size: 13px">{{ getFlag(m.home) }} {{ m.home }}</div>
+                  <div :style="{ textAlign: 'center', color: C.muted, fontSize: '11px', fontWeight: 700 }">VS</div>
+                  <div style="font-weight: 700; font-size: 13px">{{ getFlag(m.away) }} {{ m.away }}</div>
                 </div>
-                {rankings.length === 0 && <div style={{ color: C.muted, textAlign: "center", padding: 40 }}>Aucun participant.</div>}
-                {rankings.map((p, i) => (
-                  <div key={p.id} style={{ ...s.card, display: "flex", alignItems: "center", gap: 14, background: i === 0 ? "linear-gradient(135deg, #1c1507, #1a0f00)" : C.card, border: `1px solid ${i === 0 ? "#f59e0b44" : C.border}` }}>
-                    <div style={{ fontSize: 26, width: 36, textAlign: "center" }}>{medalIcons[i] || `#${i + 1}`}</div>
-                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 800, fontSize: 15 }}>{p.name}</div>
-                      <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>🎯 {p.exactCount} score{p.exactCount > 1 ? "s" : ""} exact{p.exactCount > 1 ? "s" : ""}</div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 26, fontWeight: 800, color: medalColors[i] || C.text }}>{p.total}</div>
-                      <div style={{ fontSize: 11, color: C.muted }}>points</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px">
+                  <div style="background: #0f172a; border-radius: 8px; padding: 10px">
+                    <div :style="sLabel">Pronostic {{ activeParticipantName() }}</div>
+                    <div style="display: flex; align-items: center; gap: 6px; justify-content: center">
+                      <input :style="{ ...sScoreInput, opacity: canEditProno ? 1 : 0.6 }" type="number" min="0" max="20" placeholder="–"
+                        :disabled="!canEditProno"
+                        :value="getProno(activeParticipant, m.id).home ?? ''"
+                        @input="setProno(activeParticipant, m.id, 'home', $event.target.value)" />
+                      <span :style="{ color: C.muted, fontWeight: 700 }">–</span>
+                      <input :style="{ ...sScoreInput, opacity: canEditProno ? 1 : 0.6 }" type="number" min="0" max="20" placeholder="–"
+                        :disabled="!canEditProno"
+                        :value="getProno(activeParticipant, m.id).away ?? ''"
+                        @input="setProno(activeParticipant, m.id, 'away', $event.target.value)" />
                     </div>
                   </div>
-                ))}
-                {rankings.length > 1 && (
-                  <div style={{ ...s.card, marginTop: 16, background: "#0f172a" }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: C.accent, marginBottom: 10 }}>📊 Détail par participant</div>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                      <thead>
-                        <tr style={{ color: C.muted }}>
-                          <th style={{ textAlign: "left",   padding: "4px 6px", fontWeight: 600 }}>Participant</th>
-                          <th style={{ textAlign: "center", padding: "4px 6px", fontWeight: 600 }}>Matchs joués</th>
-                          <th style={{ textAlign: "center", padding: "4px 6px", fontWeight: 600 }}>Exacts</th>
-                          <th style={{ textAlign: "center", padding: "4px 6px", fontWeight: 600 }}>Bonus</th>
-                          <th style={{ textAlign: "right",  padding: "4px 6px", fontWeight: 600 }}>Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rankings.map((p, i) => {
-                          const matchPts = matches.reduce((acc, m) => {
-                            if (m.result.home === "" || m.result.away === "") return acc;
-                            const pts = calcMatchPoints(pronostics[p.id]?.[m.id], m.result);
-                            return acc + (jokers[p.id] === m.id ? pts * 2 : pts);
-                          }, 0);
-                          const bonusPts = p.total - matchPts;
-                          const matchesPlayed = matches.filter(m => m.result.home !== "" && m.result.away !== "").length;
-                          return (
-                            <tr key={p.id} style={{ borderTop: `1px solid ${C.border}` }}>
-                              <td style={{ padding: "7px 6px", fontWeight: 700 }}>
-                                <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: p.color, marginRight: 6 }} />
-                                {p.name}
-                              </td>
-                              <td style={{ textAlign: "center", padding: "7px 6px", color: C.muted }}>{matchesPlayed}</td>
-                              <td style={{ textAlign: "center", padding: "7px 6px", color: C.green }}>{p.exactCount}</td>
-                              <td style={{ textAlign: "center", padding: "7px 6px", color: C.gold }}>{bonusPts > 0 ? `+${bonusPts}` : "–"}</td>
-                              <td style={{ textAlign: "right", padding: "7px 6px", fontWeight: 800, color: medalColors[i] || C.text }}>{p.total}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                  <div style="background: #0f172a; border-radius: 8px; padding: 10px">
+                    <div :style="sLabel">Résultat réel</div>
+                    <div style="display: flex; align-items: center; gap: 6px; justify-content: center">
+                      <input :style="sScoreInput" type="number" min="0" max="20" placeholder="–"
+                        :value="m.result.home"
+                        @input="setMatchResult(m.id, 'home', $event.target.value)" />
+                      <span :style="{ color: C.muted, fontWeight: 700 }">–</span>
+                      <input :style="sScoreInput" type="number" min="0" max="20" placeholder="–"
+                        :value="m.result.away"
+                        @input="setMatchResult(m.id, 'away', $event.target.value)" />
+                    </div>
                   </div>
-                )}
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px">
+                  <button v-if="canEditProno"
+                    :style="{ ...btnStyle(isJokerMatch(activeParticipant, m.id) ? '#f59e0b' : '#1e293b'), fontSize: '11px', padding: '4px 10px', border: isJokerMatch(activeParticipant, m.id) ? 'none' : '1px solid ' + C.border }"
+                    @click="toggleJoker(activeParticipant, m.id)">
+                    🃏 {{ isJokerMatch(activeParticipant, m.id) ? 'Retirer Joker' : 'Joker' }}
+                  </button>
+                  <div v-else></div>
+                  <div v-if="m.result.home !== '' && m.result.away !== ''" :style="{ fontWeight: 800, fontSize: '14px', color: ptColor(getMatchPts(activeParticipant, m.id), true) }">
+                    +{{ isJokerMatch(activeParticipant, m.id) ? getMatchPts(activeParticipant, m.id) * 2 : getMatchPts(activeParticipant, m.id) }} pts
+                    <span v-if="isJokerMatch(activeParticipant, m.id) && getMatchPts(activeParticipant, m.id) > 0">({{ getMatchPts(activeParticipant, m.id) }}×2)</span>
+                  </div>
+                </div>
               </div>
-            )}
+            </div>
+
+            <!-- TAB 2 — Bonus -->
+            <div v-if="tab === 2">
+              <div :style="{ color: C.muted, fontSize: '13px', marginBottom: '14px' }">
+                Pronostics à rendre avant le coup d'envoi du tournoi. Chaque participant ne peut modifier que ses propres pronostics.
+              </div>
+              <div v-for="b in BONUS_TYPES" :key="b.id" :style="sCard">
+                <div style="font-weight: 700; font-size: 14px; margin-bottom: 4px">{{ b.label }}</div>
+                <div :style="{ ...badgeStyle(C.gold), display: 'inline-block', marginBottom: '12px' }">+{{ b.points }} pts</div>
+                <template v-for="i in b.count" :key="i">
+                  <div :style="{ marginBottom: b.count > 1 ? '12px' : '0' }">
+                    <div v-if="b.count > 1" :style="{ ...sLabel, marginBottom: '6px' }">#{{ i }}</div>
+                    <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px">
+                      <div :style="{ fontSize: '12px', color: C.green, fontWeight: 700, width: '70px', flexShrink: 0 }">✅ Résultat</div>
+                      <input :style="sInput" placeholder="Résultat réel…"
+                        :value="bonusResults[b.id + '_' + (i - 1)] || ''"
+                        @input="setBonusResult(b.id, i - 1, $event.target.value)" />
+                    </div>
+                    <div v-for="p in participants" :key="p.id" style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px">
+                      <div :style="{ width: '8px', height: '8px', borderRadius: '50%', background: p.color, flexShrink: 0 }"></div>
+                      <div :style="{ fontSize: '12px', fontWeight: 600, width: '70px', flexShrink: 0, color: C.text }">{{ p.name }}</div>
+                      <input
+                        :style="{ ...sInput, borderColor: isBonusCorrect(p.id, b.id + '_' + (i - 1)) ? C.green : C.border, opacity: isMe(p.id) ? 1 : 0.6 }"
+                        :placeholder="isMe(p.id) ? 'Mon pronostic…' : '—'"
+                        :disabled="!isMe(p.id)"
+                        :value="getBonusProno(p.id, b.id + '_' + (i - 1))"
+                        @input="setBonus(p.id, b.id, i - 1, $event.target.value)" />
+                      <span v-if="isBonusCorrect(p.id, b.id + '_' + (i - 1))" :style="{ color: C.green, fontWeight: 700, fontSize: '12px', flexShrink: 0 }">+{{ b.points }}pts</span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- TAB 3 — Classement -->
+            <div v-if="tab === 3">
+              <div :style="{ ...sCard, background: 'linear-gradient(135deg, #1e1b4b, #0f172a)', marginBottom: '16px', textAlign: 'center', padding: '20px 16px' }">
+                <div :style="{ fontSize: '11px', color: C.muted, fontWeight: 700, letterSpacing: '2px', marginBottom: '4px' }">CLASSEMENT GÉNÉRAL</div>
+                <div :style="{ fontSize: '12px', color: C.muted }">Mis à jour en temps réel · partagé avec tous</div>
+              </div>
+              <div v-if="rankings.length === 0" :style="{ color: C.muted, textAlign: 'center', padding: '40px' }">Aucun participant.</div>
+              <div v-for="(p, i) in rankings" :key="p.id" :style="{ ...sCard, display: 'flex', alignItems: 'center', gap: '14px', background: i === 0 ? 'linear-gradient(135deg, #1c1507, #1a0f00)' : C.card, border: '1px solid ' + (i === 0 ? '#f59e0b44' : C.border) }">
+                <div style="font-size: 26px; width: 36px; text-align: center">{{ medalIcons[i] || ('#' + (i + 1)) }}</div>
+                <div :style="{ width: '10px', height: '10px', borderRadius: '50%', background: p.color, flexShrink: 0 }"></div>
+                <div style="flex: 1">
+                  <div style="display: flex; align-items: center; gap: 8px">
+                    <span style="font-weight: 800; font-size: 15px">{{ p.name }}</span>
+                    <span v-if="isMe(p.id)" :style="{ fontSize: '10px', color: C.accent, fontWeight: 700, background: C.accent + '18', border: '1px solid ' + C.accent + '33', borderRadius: '4px', padding: '1px 5px' }">Moi</span>
+                  </div>
+                  <div :style="{ fontSize: '12px', color: C.muted, marginTop: '2px' }">🎯 {{ p.exactCount }} score{{ p.exactCount > 1 ? 's' : '' }} exact{{ p.exactCount > 1 ? 's' : '' }}</div>
+                </div>
+                <div style="text-align: right">
+                  <div :style="{ fontSize: '26px', fontWeight: 800, color: medalColors[i] || C.text }">{{ p.total }}</div>
+                  <div :style="{ fontSize: '11px', color: C.muted }">points</div>
+                </div>
+              </div>
+              <div v-if="rankings.length > 1" :style="{ ...sCard, marginTop: '16px', background: '#0f172a' }">
+                <div :style="{ fontSize: '13px', fontWeight: 700, color: C.accent, marginBottom: '10px' }">📊 Détail par participant</div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px">
+                  <thead>
+                    <tr :style="{ color: C.muted }">
+                      <th style="text-align: left; padding: 4px 6px; font-weight: 600">Participant</th>
+                      <th style="text-align: center; padding: 4px 6px; font-weight: 600">Matchs joués</th>
+                      <th style="text-align: center; padding: 4px 6px; font-weight: 600">Exacts</th>
+                      <th style="text-align: center; padding: 4px 6px; font-weight: 600">Bonus</th>
+                      <th style="text-align: right; padding: 4px 6px; font-weight: 600">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(p, i) in rankings" :key="p.id" :style="{ borderTop: '1px solid ' + C.border }">
+                      <td style="padding: 7px 6px; font-weight: 700">
+                        <span :style="{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: p.color, marginRight: '6px' }"></span>
+                        {{ p.name }}
+                      </td>
+                      <td :style="{ textAlign: 'center', padding: '7px 6px', color: C.muted }">{{ matchesPlayedCount() }}</td>
+                      <td :style="{ textAlign: 'center', padding: '7px 6px', color: C.green }">{{ p.exactCount }}</td>
+                      <td :style="{ textAlign: 'center', padding: '7px 6px', color: C.gold }">{{ (p.total - matchPtsForRanking(p.id)) > 0 ? '+' + (p.total - matchPtsForRanking(p.id)) : '–' }}</td>
+                      <td :style="{ textAlign: 'right', padding: '7px 6px', fontWeight: 800, color: medalColors[i] || C.text }">{{ p.total }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
           </div>
         </div>
-      );
-    }
-
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+      `
+    }).mount('#app');
   </script>
 </body>
 </html>
