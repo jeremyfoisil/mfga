@@ -34,7 +34,7 @@ export const useAppStore = defineStore('app', () => {
         const { data: retry } = await sb.from("profiles").select("*").eq("id", userId).single()
         prof = retry
       }
-      if (!prof) { auth.authError = "Profil introuvable. Contactez l'administrateur."; return }
+      if (!prof) { auth.authError = "Profil introuvable. Contactez l'administrateur."; auth.session = null; return }
       auth.profile = prof
 
       const [{ data: pData }, { data: mData }, { data: prData }, { data: brData }, { data: bpData }] = await Promise.all([

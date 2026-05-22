@@ -70,7 +70,7 @@ export const useAdminStore = defineStore('admin', () => {
       }
       const { data: mData } = await sb.from("matches").select("*").order("id")
       matchesStore.matches = (mData || []).map(mapMatchRow)
-      const withScore = upserts.filter(u => u.result_home !== null).length
+      const withScore = upserts.filter(u => u.result_home != null).length
       importStatus.value = `✓ ${upserts.length} matchs mis à jour (${withScore} avec score)`
       setTimeout(() => { showImportModal.value = false; importStatus.value = ''; importJsonText.value = '' }, 2000)
     } catch (e) {
