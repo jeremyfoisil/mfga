@@ -193,8 +193,9 @@ function toggleJoker(pid: number | null, matchId: number) {
     </div>
 
     <!-- KO match cards -->
-    <div v-if="activeStageType === 'knockout'" v-for="m in koStageMatches" :key="m.id" class="card-rel"
-      :style="{ ...sCard, padding: '0', border: '1px solid ' + (isJokerMatch(activeParticipant, m.id) ? '#f59e0b66' : '#f59e0b33'), marginBottom: '12px' }">
+    <div v-if="activeStageType === 'knockout'" v-for="m in koStageMatches" :key="m.id" style="position: relative; margin-bottom: 12px">
+    <div class="card-rel"
+      :style="{ ...sCard, padding: '0', border: '1px solid ' + (isJokerMatch(activeParticipant, m.id) ? '#f59e0b66' : '#f59e0b33') }">
       <div style="height: 4px; background: linear-gradient(90deg, #f59e0b, #d97706, #92400e); border-radius: 4px 4px 0 0"></div>
       <!-- KO header -->
       <div :style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', borderBottom: '1px solid ' + C.border, background: 'rgba(15,23,42,0.5)' }">
@@ -252,10 +253,6 @@ function toggleJoker(pid: number | null, matchId: number) {
           </div>
           <!-- Result panel -->
           <div :style="{ background: '#0a0e1a', borderRadius: '10px', padding: '10px 8px', border: '1px solid ' + (m.result.home !== '' && m.result.away !== '' ? '#22c55e44' : (canEditResult ? '#fbbf2444' : C.border)), position: 'relative', overflow: 'hidden' }">
-            <!-- Trump dance overlay -->
-            <img v-if="m.homeKnown && m.awayKnown && m.result.home !== '' && m.result.away !== '' && getMatchPts(activeParticipant, m.id) === 3"
-              src="/assets/trump-dance.gif" alt="🕺" class="trump-dance"
-              style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 10px; z-index: 2" />
             <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px">
               <span :class="m.result.home !== '' && m.result.away !== '' ? 'live-dot' : ''"
                 :style="{ width: '6px', height: '6px', borderRadius: '50%', background: m.result.home !== '' && m.result.away !== '' ? '#22c55e' : (canEditResult ? '#fbbf24' : '#475569') }"></span>
@@ -332,10 +329,15 @@ function toggleJoker(pid: number | null, matchId: number) {
         </div>
       </div>
     </div>
+    <img v-if="m.homeKnown && m.awayKnown && m.result.home !== '' && m.result.away !== '' && getMatchPts(activeParticipant, m.id) === 3"
+      src="/assets/trump-dance.gif" alt="🕺" class="trump-dance"
+      style="position: absolute; bottom: -18px; right: 18px; width: 95px; z-index: 20; pointer-events: none; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6))" />
+    </div>
 
     <!-- Group match cards -->
-    <div v-if="activeStageType === 'group'" v-for="(m, idx) in groupMatches" :key="m.id" class="card-rel"
-      :style="{ ...sCard, padding: '0', border: '1px solid ' + (isJokerMatch(activeParticipant, m.id) ? '#f59e0b66' : C.border), boxShadow: isJokerMatch(activeParticipant, m.id) ? '0 0 0 1px rgba(245,158,11,0.2), 0 4px 12px rgba(245,158,11,0.15)' : 'none', marginBottom: '12px' }">
+    <div v-if="activeStageType === 'group'" v-for="(m, idx) in groupMatches" :key="m.id" style="position: relative; margin-bottom: 12px">
+    <div class="card-rel"
+      :style="{ ...sCard, padding: '0', border: '1px solid ' + (isJokerMatch(activeParticipant, m.id) ? '#f59e0b66' : C.border), boxShadow: isJokerMatch(activeParticipant, m.id) ? '0 0 0 1px rgba(245,158,11,0.2), 0 4px 12px rgba(245,158,11,0.15)' : 'none' }">
       <div class="scoreboard-strip"></div>
       <!-- Match header -->
       <div :style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', borderBottom: '1px solid ' + C.border, background: 'rgba(15,23,42,0.5)' }">
@@ -397,10 +399,6 @@ function toggleJoker(pid: number | null, matchId: number) {
           </div>
           <!-- Result panel -->
           <div :style="{ background: '#0a0e1a', borderRadius: '10px', padding: '10px 8px', border: '1px solid ' + (m.result.home !== '' && m.result.away !== '' ? '#22c55e44' : (canEditResult ? '#fbbf2444' : C.border)), position: 'relative', overflow: 'hidden' }">
-            <!-- Trump dance overlay -->
-            <img v-if="m.result.home !== '' && m.result.away !== '' && getMatchPts(activeParticipant, m.id) === 3"
-              src="/assets/trump-dance.gif" alt="🕺" class="trump-dance"
-              style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 10px; z-index: 2" />
             <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px">
               <span :class="m.result.home !== '' && m.result.away !== '' ? 'live-dot' : ''"
                 :style="{ width: '6px', height: '6px', borderRadius: '50%', background: m.result.home !== '' && m.result.away !== '' ? '#22c55e' : (canEditResult ? '#fbbf24' : '#475569') }"></span>
@@ -485,6 +483,10 @@ Giroud, 45"
           </div>
         </div>
       </div>
+    </div>
+    <img v-if="m.result.home !== '' && m.result.away !== '' && getMatchPts(activeParticipant, m.id) === 3"
+      src="/assets/trump-dance.gif" alt="🕺" class="trump-dance"
+      style="position: absolute; bottom: -18px; right: 18px; width: 95px; z-index: 20; pointer-events: none; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6))" />
     </div>
   </div>
 </template>
