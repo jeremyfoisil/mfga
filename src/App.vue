@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, watch } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
 import { sb } from './supabase'
 import { useAuthStore } from './stores/auth'
 import { useAppStore } from './stores/app'
@@ -26,7 +26,7 @@ onMounted(async () => {
     await app.loadData(existing.user.id)
   }
 
-  sb.auth.onAuthStateChange(async (event, newSession) => {
+  const { data: { subscription } } = sb.auth.onAuthStateChange(async (event, newSession) => {
     if (event === 'SIGNED_IN') {
       auth.session = newSession
       if (!app.loaded) await app.loadData(newSession!.user.id)
@@ -37,6 +37,7 @@ onMounted(async () => {
       app.loaded = false
     }
   })
+  onUnmounted(() => subscription.unsubscribe())
 })
 
 watch(() => auth.authMode, () => { auth.authError = '' })
