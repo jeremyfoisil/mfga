@@ -32,6 +32,15 @@ onMounted(() => { timer = setInterval(() => { now.value = Date.now() }, 30000) }
 onUnmounted(() => clearInterval(timer))
 
 const grabSound = new Audio('https://www.myinstants.com/media/sounds/gebtp.mp3')
+grabSound.preload = 'auto'
+
+// Débloque l'autoplay au premier clic sur la page
+onMounted(() => {
+  const prime = () => {
+    grabSound.play().then(() => { grabSound.pause(); grabSound.currentTime = 0 }).catch(() => {})
+  }
+  document.addEventListener('click', prime, { once: true })
+})
 
 // Joue le son quand un résultat exact est nouvellement détecté (realtime)
 const knownResults = new Set<string>()
@@ -218,12 +227,6 @@ function toggleJoker(pid: number | null, matchId: number) {
           </div>
         </div>
 
-        <!-- Trump dance - pronostic exact -->
-        <div v-if="m.homeKnown && m.awayKnown && m.result.home !== '' && m.result.away !== '' && getMatchPts(activeParticipant, m.id) === 3"
-          style="display: flex; justify-content: flex-end; margin-bottom: 6px">
-          <img src="/assets/trump-dance.gif" alt="🕺" class="trump-dance" style="width: 88px; height: auto; border-radius: 8px; border: 2px solid #22c55e66" />
-        </div>
-
         <!-- Pronostic + résultat (seulement si les deux équipes sont connues) -->
         <div v-if="m.homeKnown && m.awayKnown" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
           <!-- Pronostic panel -->
@@ -248,7 +251,11 @@ function toggleJoker(pid: number | null, matchId: number) {
             </div>
           </div>
           <!-- Result panel -->
-          <div :style="{ background: '#0a0e1a', borderRadius: '10px', padding: '10px 8px', border: '1px solid ' + (m.result.home !== '' && m.result.away !== '' ? '#22c55e44' : (canEditResult ? '#fbbf2444' : C.border)) }">
+          <div :style="{ background: '#0a0e1a', borderRadius: '10px', padding: '10px 8px', border: '1px solid ' + (m.result.home !== '' && m.result.away !== '' ? '#22c55e44' : (canEditResult ? '#fbbf2444' : C.border)), position: 'relative', overflow: 'hidden' }">
+            <!-- Trump dance overlay -->
+            <img v-if="m.homeKnown && m.awayKnown && m.result.home !== '' && m.result.away !== '' && getMatchPts(activeParticipant, m.id) === 3"
+              src="/assets/trump-dance.gif" alt="🕺" class="trump-dance"
+              style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 10px; z-index: 2" />
             <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px">
               <span :class="m.result.home !== '' && m.result.away !== '' ? 'live-dot' : ''"
                 :style="{ width: '6px', height: '6px', borderRadius: '50%', background: m.result.home !== '' && m.result.away !== '' ? '#22c55e' : (canEditResult ? '#fbbf24' : '#475569') }"></span>
@@ -366,12 +373,6 @@ function toggleJoker(pid: number | null, matchId: number) {
           </div>
         </div>
 
-        <!-- Trump dance - pronostic exact -->
-        <div v-if="m.result.home !== '' && m.result.away !== '' && getMatchPts(activeParticipant, m.id) === 3"
-          style="display: flex; justify-content: flex-end; margin-bottom: 6px">
-          <img src="/assets/trump-dance.gif" alt="🕺" class="trump-dance" style="width: 88px; height: auto; border-radius: 8px; border: 2px solid #22c55e66" />
-        </div>
-
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
           <!-- Pronostic panel -->
           <div :style="{ background: '#0a0e1a', borderRadius: '10px', padding: '10px 8px', border: '1px solid ' + activeParticipantColor() + '44', position: 'relative' }">
@@ -395,7 +396,11 @@ function toggleJoker(pid: number | null, matchId: number) {
             </div>
           </div>
           <!-- Result panel -->
-          <div :style="{ background: '#0a0e1a', borderRadius: '10px', padding: '10px 8px', border: '1px solid ' + (m.result.home !== '' && m.result.away !== '' ? '#22c55e44' : (canEditResult ? '#fbbf2444' : C.border)), position: 'relative' }">
+          <div :style="{ background: '#0a0e1a', borderRadius: '10px', padding: '10px 8px', border: '1px solid ' + (m.result.home !== '' && m.result.away !== '' ? '#22c55e44' : (canEditResult ? '#fbbf2444' : C.border)), position: 'relative', overflow: 'hidden' }">
+            <!-- Trump dance overlay -->
+            <img v-if="m.result.home !== '' && m.result.away !== '' && getMatchPts(activeParticipant, m.id) === 3"
+              src="/assets/trump-dance.gif" alt="🕺" class="trump-dance"
+              style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 10px; z-index: 2" />
             <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px">
               <span :class="m.result.home !== '' && m.result.away !== '' ? 'live-dot' : ''"
                 :style="{ width: '6px', height: '6px', borderRadius: '50%', background: m.result.home !== '' && m.result.away !== '' ? '#22c55e' : (canEditResult ? '#fbbf24' : '#475569') }"></span>
