@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useAppStore } from '../stores/app'
 import { useAdminStore } from '../stores/admin'
-import { C, TABS } from '../constants/ui'
+import { C, TABS, CONFETTI_BITS } from '../constants/ui'
 
 const emit = defineEmits<{ logout: [] }>()
 const auth  = useAuthStore()
@@ -20,6 +20,9 @@ function tabStyle(active: boolean) {
 
 <template>
   <div :style="{ background: 'linear-gradient(180deg, #0f172a 0%, #0a0e1a 100%)', borderBottom: '1px solid ' + C.border, padding: '10px 12px 0', position: 'sticky', top: 0, zIndex: 100, maxWidth: '800px', margin: '0 auto' }">
+    <div v-for="(b, i) in CONFETTI_BITS" :key="i" class="confetti-bit fixed"
+      :style="{ left: b.left, animationDelay: b.delay, animationDuration: b.dur, background: b.color }">
+    </div>
     <!-- Top bar -->
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px">
       <div style="display: flex; align-items: center; gap: 8px">
