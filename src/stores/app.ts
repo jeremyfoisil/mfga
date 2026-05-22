@@ -137,5 +137,5 @@ export const useAppStore = defineStore('app', () => {
     if (realtimeChannel) { sb.removeChannel(realtimeChannel); realtimeChannel = null }
   }
 
-  return { loaded, saveMsg, rtStatus, tab, flash, loadData, stopRealtime }
+  return { loaded, saveMsg, rtStatus, tab, flash, loadData, startRealtime, stopRealtime }
 })
