@@ -143,6 +143,15 @@ function toggleJoker(pid: number | null, matchId: number) {
       👁 Mode lecture seule — pronostics de {{ activeParticipantName() }}
     </div>
 
+    <!-- Pronostic deadline notice (only shown when editing own pronostics) -->
+    <div v-if="canEditProno" :style="{ background: 'linear-gradient(135deg, rgba(30,58,138,0.4), rgba(30,41,59,0.6))', border: '1px solid rgba(96,165,250,0.3)', borderRadius: '10px', padding: '10px 14px', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '10px' }">
+      <span style="font-size: 20px; flex-shrink: 0">⏱️</span>
+      <div>
+        <div style="font-family: Anton, sans-serif; font-size: 12px; letter-spacing: 1px; color: #60a5fa; margin-bottom: 2px">DEADLINE PRONOSTICS</div>
+        <div style="font-size: 11px; color: #94a3b8">Saisissez vos pronostics <b style="color: #f8fafc">avant le coup d'envoi</b> — une fois le match lancé, la saisie est verrouillée 🔒</div>
+      </div>
+    </div>
+
     <!-- KO : aucun match disponible -->
     <div v-if="activeStageType === 'knockout' && koStageMatches.length === 0"
       :style="{ ...sCard, textAlign: 'center', padding: '32px 20px', color: C.muted }">
@@ -316,12 +325,14 @@ function toggleJoker(pid: number | null, matchId: number) {
           <div class="team-block home">
             <div class="flag-bg" :style="{ background: getFlagBg(m.home) }"></div>
             <span class="name">{{ m.home }}</span>
+            <span style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1">{{ getFlag(m.home) }}</span>
           </div>
           <div style="display: flex; align-items: center">
             <span class="vs-chunk">VS</span>
           </div>
           <div class="team-block away">
             <div class="flag-bg" :style="{ background: getFlagBg(m.away) }"></div>
+            <span style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1">{{ getFlag(m.away) }}</span>
             <span class="name">{{ m.away }}</span>
           </div>
         </div>
