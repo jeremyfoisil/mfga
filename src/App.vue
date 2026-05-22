@@ -63,7 +63,7 @@ async function doLogout() {
     <AuthScreen v-if="!auth.session" />
     <template v-else-if="app.loaded">
       <AppHeader @logout="doLogout" />
-      <div style="max-width: 800px; margin: 0 auto; padding: 12px 14px 80px">
+      <div style="max-width: 800px; margin: 0 auto; padding: 12px 14px 80px; position: relative; z-index: 3">
         <TabParticipants v-if="app.tab === 0" />
         <TabMatchs       v-else-if="app.tab === 1" />
         <TabBonus        v-else-if="app.tab === 2" />
