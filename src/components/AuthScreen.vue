@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { C, CONFETTI_BITS } from '../constants/ui'
-import { FLAG_COLORS, MELTING_POT_FLAGS } from '../constants/teams'
+import { FLAG_COLORS } from '../constants/teams'
 
 const auth = useAuthStore()
 const sInput = { background: "#1e293b", border: "1px solid #1e293b", borderRadius: "8px", color: C.text, padding: "10px 14px", fontFamily: "'Syne', sans-serif", fontSize: "14px", outline: "none", width: "100%" }
@@ -13,11 +13,6 @@ const isLogin = computed(() => auth.authMode === 'login')
 
 <template>
   <div :style="{ minHeight: '100vh', color: C.text, fontFamily: 'Syne, sans-serif', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', position: 'relative' }">
-    <div class="flag-melting-pot">
-      <div v-for="(f, i) in MELTING_POT_FLAGS" :key="i" class="flag-tile"
-        :style="{ left: f.x, top: f.y, width: f.w + 'px', height: f.h + 'px', background: FLAG_COLORS[f.c] || '#475569', transform: 'rotate(' + f.r + 'deg)' }">
-      </div>
-    </div>
     <div v-for="(b, i) in CONFETTI_BITS" :key="i" class="confetti-bit"
       :style="{ left: b.left, animationDelay: b.delay, animationDuration: b.dur, background: b.color }">
     </div>
