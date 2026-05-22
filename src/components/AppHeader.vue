@@ -25,7 +25,7 @@ function tabStyle(active: boolean) {
       <div style="display: flex; align-items: center; gap: 8px">
         <span class="dot" style="background: #dc2626"></span>
         <span class="dot" style="background: #1e3a8a"></span>
-        <span class="wc-mark" style="color: #f8fafc; letter-spacing: 2px">WORLD CUP&nbsp;2026</span>
+        <span class="wc-mark">WORLD CUP&nbsp;2026</span>
       </div>
       <div class="topbar-right" style="display: flex; align-items: center; gap: 12px">
         <div style="display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase"
@@ -60,6 +60,11 @@ function tabStyle(active: boolean) {
       <div class="header-mascot" style="flex-shrink: 0; position: relative; align-self: flex-end">
         <img src="/assets/mascot.png" alt="MFGA Goat" width="180" height="153"
           style="display: block; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.7))" />
+        <svg class="ball-spin" width="28" height="28" viewBox="0 0 32 32" style="position: absolute; top: 0; right: -8px">
+          <circle cx="16" cy="16" r="14" fill="#f8fafc" stroke="#0a0e1a" stroke-width="1.5"/>
+          <polygon points="16,9 21,13 19,19 13,19 11,13" fill="#0a0e1a"/>
+          <path d="M16 9 L16 4 M21 13 L26 11 M19 19 L23 23 M13 19 L9 23 M11 13 L6 11" stroke="#0a0e1a" stroke-width="1.2" fill="none"/>
+        </svg>
       </div>
       <div class="header-quote" style="flex-shrink: 0; max-width: 155px; align-self: center; border-left: 2px solid rgba(220,38,38,0.5); padding-left: 10px">
         <div style="font-size: 9.5px; color: #94a3b8; font-style: italic; line-height: 1.5; letter-spacing: 0.2px">

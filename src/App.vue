@@ -5,6 +5,7 @@ import { useAuthStore } from './stores/auth'
 import { useAppStore } from './stores/app'
 import { useAdminStore } from './stores/admin'
 import { C } from './constants/ui'
+import { FLAG_COLORS, MELTING_POT_FLAGS } from './constants/teams'
 import AuthScreen from './components/AuthScreen.vue'
 import AppHeader from './components/AppHeader.vue'
 import AdminModal from './components/modals/AdminModal.vue'
@@ -53,6 +54,12 @@ async function doLogout() {
 
 <template>
   <div :style="{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: 'Syne, sans-serif' }">
+    <!-- Flag melting-pot background — always visible -->
+    <div class="flag-melting-pot">
+      <div v-for="(f, i) in MELTING_POT_FLAGS" :key="i" class="flag-tile"
+        :style="{ left: f.x, top: f.y, width: f.w + 'px', height: f.h + 'px', background: FLAG_COLORS[f.c] || '#475569', transform: 'rotate(' + f.r + 'deg)' }">
+      </div>
+    </div>
     <AuthScreen v-if="!auth.session" />
     <template v-else-if="app.loaded">
       <AppHeader @logout="doLogout" />
