@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useParticipantsStore } from '../../stores/participants'
 import { useMatchesStore } from '../../stores/matches'
 import { usePronosticsStore } from '../../stores/pronostics'
@@ -30,6 +30,29 @@ onMounted(() => {
 let timer: ReturnType<typeof setInterval>
 onMounted(() => { timer = setInterval(() => { now.value = Date.now() }, 30000) })
 onUnmounted(() => clearInterval(timer))
+
+const grabSound = new Audio('https://www.myinstants.com/media/sounds/gebtp.mp3')
+
+// Joue le son quand un résultat exact est nouvellement détecté (realtime)
+const knownResults = new Set<string>()
+onMounted(() => {
+  matchesStore.matches.forEach(m => {
+    if (m.result.home !== '' && m.result.away !== '') knownResults.add(String(m.id))
+  })
+})
+watch(() => matchesStore.matches.map(m => m.result.home + ':' + m.result.away + ':' + m.id).join('|'), () => {
+  matchesStore.matches.forEach(m => {
+    const key = String(m.id)
+    const hasResult = m.result.home !== '' && m.result.away !== ''
+    if (hasResult && !knownResults.has(key)) {
+      knownResults.add(key)
+      if (getMatchPts(activeParticipant.value, m.id) === 3) {
+        grabSound.currentTime = 0
+        grabSound.play().catch(() => {})
+      }
+    }
+  })
+})
 
 const canEditProno  = computed(() => admin.isAdmin || activeParticipant.value === myParticipantId.value)
 const canEditResult = computed(() => admin.isAdmin)
