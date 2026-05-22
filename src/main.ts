@@ -1,7 +1,7 @@
-// Bootstrap — will be completed in Task 7
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import App from './App.vue'
 
-const app = createApp({ template: '<div>Loading...</div>' })
+const app = createApp(App)
 app.use(createPinia())
 app.mount('#app')
