@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useAppStore } from '../stores/app'
 import { useAdminStore } from '../stores/admin'
@@ -15,6 +15,28 @@ const username = computed(() => auth.session?.user?.email?.split('@')[0] ?? '')
 
 function tabStyle(active: boolean) {
   return { padding: "10px 16px", background: active ? "#dc2626" : "transparent", color: active ? "#fff" : C.muted, border: "none", borderRadius: "8px 8px 0 0", cursor: "pointer", fontFamily: "'Anton', sans-serif", fontSize: "14px", letterSpacing: "1.2px", textTransform: "uppercase" as const, borderBottom: active ? "3px solid #1e3a8a" : "3px solid transparent" }
+}
+
+const TRUMP_SOUNDS = [
+  '/media/sounds/donald-trump-fake-news-sound-effect.mp3',
+  '/media/sounds/donald-trump-wrong-sound-effect.mp3',
+  '/media/sounds/i_will_build_a_great_great_wall_on_our_southern_bo.mp3',
+  '/media/sounds/trump-dont-be-rude.mp3',
+  '/media/sounds/china_pH6AIw0.mp3',
+  '/media/sounds/im-gonna-come_6HehWm4.mp3',
+  '/media/sounds/obamna.mp3',
+]
+
+const mascotBouncing = ref(false)
+let currentAudio: HTMLAudioElement | null = null
+
+function playTrumpSound() {
+  const path = TRUMP_SOUNDS[Math.floor(Math.random() * TRUMP_SOUNDS.length)]
+  if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0 }
+  currentAudio = new Audio('https://www.myinstants.com' + path)
+  currentAudio.play()
+  mascotBouncing.value = true
+  setTimeout(() => { mascotBouncing.value = false }, 600)
 }
 </script>
 
@@ -62,7 +84,8 @@ function tabStyle(active: boolean) {
       </div>
       <div class="header-mascot" style="flex-shrink: 0; position: relative; align-self: flex-end">
         <img src="/assets/mascot.png" alt="MFGA Goat" width="180" height="153"
-          style="display: block; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.7))" />
+          :style="{ display: 'block', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.7))', cursor: 'pointer', transition: 'transform 0.1s', transform: mascotBouncing ? 'scale(1.12) rotate(-4deg)' : 'scale(1)' }"
+          @click="playTrumpSound" />
 
       </div>
       <div class="header-quote" style="flex-shrink: 0; max-width: 155px; align-self: center; border-left: 2px solid rgba(220,38,38,0.5); padding-left: 10px">
