@@ -195,6 +195,12 @@ function toggleJoker(pid: number | null, matchId: number) {
           </div>
         </div>
 
+        <!-- Trump dance - pronostic exact -->
+        <div v-if="m.homeKnown && m.awayKnown && m.result.home !== '' && m.result.away !== '' && getMatchPts(activeParticipant, m.id) === 3"
+          style="display: flex; justify-content: flex-end; margin-bottom: 6px">
+          <img src="/assets/trump-dance.gif" alt="🕺" class="trump-dance" style="width: 88px; height: auto; border-radius: 8px; border: 2px solid #22c55e66" />
+        </div>
+
         <!-- Pronostic + résultat (seulement si les deux équipes sont connues) -->
         <div v-if="m.homeKnown && m.awayKnown" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
           <!-- Pronostic panel -->
@@ -335,6 +341,12 @@ function toggleJoker(pid: number | null, matchId: number) {
             <span style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1">{{ getFlag(m.away) }}</span>
             <span class="name">{{ m.away }}</span>
           </div>
+        </div>
+
+        <!-- Trump dance - pronostic exact -->
+        <div v-if="m.result.home !== '' && m.result.away !== '' && getMatchPts(activeParticipant, m.id) === 3"
+          style="display: flex; justify-content: flex-end; margin-bottom: 6px">
+          <img src="/assets/trump-dance.gif" alt="🕺" class="trump-dance" style="width: 88px; height: auto; border-radius: 8px; border: 2px solid #22c55e66" />
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">

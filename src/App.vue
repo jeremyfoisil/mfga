@@ -306,6 +306,15 @@ input, select, textarea { box-sizing: border-box; }
 .bonus-header { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin: 0 0 14px; border-radius: 10px 10px 0 0; }
 .bonus-icon-box { width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
 
+/* ── Trump dance ───────────────────────────────────────────────── */
+@keyframes trump-bounce-in {
+  0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+  60%  { transform: scale(1.15) rotate(4deg); opacity: 1; }
+  80%  { transform: scale(0.95) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+.trump-dance { animation: trump-bounce-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
 /* ── Tabs ──────────────────────────────────────────────────────── */
 .tab-bar { display: flex; gap: 4px; margin-top: 4px; }
 
