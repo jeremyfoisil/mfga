@@ -19,7 +19,7 @@ function tabStyle(active: boolean) {
 </script>
 
 <template>
-  <div :style="{ background: 'linear-gradient(180deg, #0f172a 0%, #0a0e1a 100%)', borderBottom: '1px solid ' + C.border, padding: '10px 12px 0', position: 'sticky', top: 0, zIndex: 100, maxWidth: '480px', margin: '0 auto' }">
+  <div :style="{ background: 'linear-gradient(180deg, #0f172a 0%, #0a0e1a 100%)', borderBottom: '1px solid ' + C.border, padding: '10px 12px 0', position: 'sticky', top: 0, zIndex: 100, maxWidth: '800px', margin: '0 auto' }">
     <!-- Top bar -->
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px">
       <div style="display: flex; align-items: center; gap: 8px">
