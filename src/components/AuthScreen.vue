@@ -16,7 +16,7 @@ const isLogin = computed(() => auth.authMode === 'login')
     <div v-for="(b, i) in CONFETTI_BITS" :key="i" class="confetti-bit"
       :style="{ left: b.left, animationDelay: b.delay, animationDuration: b.dur, background: b.color }">
     </div>
-    <div style="position: relative; z-index: 1; width: 100%; max-width: 360px">
+    <div style="position: relative; z-index: 4; width: 100%; max-width: 360px">
       <div style="text-align: center; margin-bottom: 32px">
         <div class="title-mfga">MAKE <span class="title-red">FOOTBALL</span></div>
         <div class="title-mfga">GOAT <span class="title-blue">AGAIN</span> <span style="font-size:32px">🐐</span></div>
