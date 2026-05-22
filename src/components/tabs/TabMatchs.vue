@@ -331,7 +331,7 @@ function toggleJoker(pid: number | null, matchId: number) {
     </div>
     <img v-if="m.homeKnown && m.awayKnown && m.result.home !== '' && m.result.away !== '' && getMatchPts(activeParticipant, m.id) === 3"
       src="/assets/trump-dance.gif" alt="🕺" class="trump-dance"
-      style="position: absolute; top: 50%; right: 18px; transform: translateY(-50%); width: 95px; z-index: 20; pointer-events: none; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6))" />
+      style="position: absolute; top: 30%; right: 18px; transform: translateY(-50%); width: 95px; z-index: 20; pointer-events: none; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6))" />
     </div>
 
     <!-- Group match cards -->
@@ -486,7 +486,7 @@ Giroud, 45"
     </div>
     <img v-if="m.result.home !== '' && m.result.away !== '' && getMatchPts(activeParticipant, m.id) === 3"
       src="/assets/trump-dance.gif" alt="🕺" class="trump-dance"
-      style="position: absolute; top: 50%; right: 18px; transform: translateY(-50%); width: 95px; z-index: 20; pointer-events: none; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6))" />
+      style="position: absolute; top: 30%; right: 18px; transform: translateY(-50%); width: 95px; z-index: 20; pointer-events: none; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6))" />
     </div>
   </div>
 </template>
