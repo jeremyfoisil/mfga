@@ -5,15 +5,18 @@ import { useMatchesStore } from '../../stores/matches'
 import { usePronosticsStore } from '../../stores/pronostics'
 import { useAdminStore } from '../../stores/admin'
 import { useAuthStore } from '../../stores/auth'
-import { C, sCard, medalColors, medalIcons } from '../../constants/ui'
+import { C, sCard } from '../../constants/ui'
+import { BONUS_TYPES } from '../../constants/bonus'
 import { calcMatchPoints } from '../../utils/match'
 import { initials } from '../../utils/ui'
+import { useBonusStore } from '../../stores/bonus'
 
 const parts   = useParticipantsStore()
 const matches = useMatchesStore()
 const pronos  = usePronosticsStore()
-const admin   = useAdminStore()
-const auth    = useAuthStore()
+const admin      = useAdminStore()
+const auth       = useAuthStore()
+const bonusStore = useBonusStore()
 
 const myParticipantId = computed(() => auth.profile?.participant_id ?? null)
 
@@ -42,6 +45,13 @@ function calcScore(pid: number) {
     else if (pts === 1) diagCount++
     total += pronos.jokers[pid] === m.id ? pts * 2 : pts
   })
+  BONUS_TYPES.forEach(b => {
+    for (let i = 0; i < b.count; i++) {
+      const res   = bonusStore.bonusResults[b.id + '_' + i]
+      const prono = bonusStore.bonusPronostics[pid]?.[b.id + '_' + i]
+      if (res && prono && res.toLowerCase().trim() === prono.toLowerCase().trim()) total += b.points
+    }
+  })
   return { total, exactCount, diagCount }
 }
 
@@ -50,9 +60,7 @@ const rankings = computed(() =>
     .sort((a, b) => b.total - a.total || b.exactCount - a.exactCount)
 )
 
-function badgeStyle(color: string) {
-  return { background: color + "22", color, border: "1px solid " + color + "44", borderRadius: "6px", padding: "2px 8px", fontSize: "12px", fontWeight: 700 }
-}
+
 </script>
 
 <template>
