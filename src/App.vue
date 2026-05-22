@@ -120,9 +120,11 @@ input, select, textarea { box-sizing: border-box; }
   100% { transform: translateY(200px) rotate(720deg); opacity: 0; }
 }
 .confetti-bit {
-  position: fixed; width: 6px; height: 10px; border-radius: 1px;
+  position: absolute; width: 6px; height: 10px; border-radius: 1px;
   animation: confetti-fall linear infinite; pointer-events: none;
-  z-index: 3;
+}
+.confetti-bit.fixed {
+  position: fixed; z-index: 5;
 }
 
 @keyframes ball-spin {
