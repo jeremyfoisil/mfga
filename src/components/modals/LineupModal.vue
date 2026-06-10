@@ -21,7 +21,8 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 // ── Formation builder ──────────────────────────────────────────────
-const X_POS: Record<number, number[]> = {
+// Y spread (vertical distribution of players in each row)
+const Y_POS: Record<number, number[]> = {
   1: [50],
   2: [28, 72],
   3: [18, 50, 82],
@@ -29,6 +30,10 @@ const X_POS: Record<number, number[]> = {
   5: [8, 26, 50, 74, 92],
   6: [7, 21, 38, 62, 79, 93],
 }
+
+// X position per row type — landscape pitch, home on left, away on right
+const HOME_X: Record<string, number> = { GK: 6, DEF: 22, MID: 38, FWD: 52 }
+const AWAY_X: Record<string, number> = { GK: 94, DEF: 78, MID: 62, FWD: 48 }
 
 function buildXI(players: Player[]) {
   const gks  = players.filter(p => p.position === 'GK').slice(0, 1)
@@ -54,15 +59,16 @@ function buildXI(players: Player[]) {
 type Dot = Player & { x: number; y: number }
 
 function toDots(xi: ReturnType<typeof buildXI>, side: 'home' | 'away'): Dot[] {
+  const xMap = side === 'home' ? HOME_X : AWAY_X
   const rows = [
-    { players: xi.gks,  y: side === 'home' ? 88 : 12 },
-    { players: xi.defs, y: side === 'home' ? 73 : 27 },
-    { players: xi.mids, y: side === 'home' ? 57 : 43 },
-    { players: xi.fwds, y: side === 'home' ? 42 : 58 },
+    { players: xi.gks,  pos: 'GK'  },
+    { players: xi.defs, pos: 'DEF' },
+    { players: xi.mids, pos: 'MID' },
+    { players: xi.fwds, pos: 'FWD' },
   ]
   return rows.flatMap(row => {
-    const xs = X_POS[row.players.length] ?? X_POS[3]
-    return row.players.map((p, i) => ({ ...p, x: xs[i], y: row.y }))
+    const ys = Y_POS[row.players.length] ?? Y_POS[3]
+    return row.players.map((p, i) => ({ ...p, x: xMap[row.pos], y: ys[i] }))
   })
 }
 
@@ -95,7 +101,7 @@ function groupedSquad(players: Player[]) {
   >
     <!-- Card — click.stop so backdrop's @click.self never fires on card clicks -->
     <div
-      style="width: 100%; max-width: 420px; background: #0f172a; border: 1px solid #1e293b; border-radius: 14px; overflow: hidden"
+      style="width: 100%; max-width: 600px; background: #0f172a; border: 1px solid #1e293b; border-radius: 14px; overflow: hidden"
       @click.stop
     >
 
@@ -130,78 +136,78 @@ function groupedSquad(players: Player[]) {
       <div v-else-if="error" style="text-align: center; padding: 40px; color: #ef4444; font-size: 13px">{{ error }}</div>
 
       <!-- Pitch -->
-      <div v-else-if="data" style="position: relative; border-radius: 0; overflow: hidden; box-shadow: none; margin: 0">
+      <div v-else-if="data" style="position: relative; overflow: hidden">
         <!-- Source badge -->
         <div style="position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.15); border-radius: 999px; padding: 2px 10px; font-size: 9px; color: rgba(255,255,255,0.6); letter-spacing: 1.5px; font-family: Anton, sans-serif; white-space: nowrap">
           {{ data.source === 'lineup' ? '⚡ COMPO OFFICIELLE' : '📋 LISTE DU GROUPE' }}
         </div>
 
-        <!-- Away team label (top) -->
-        <div style="position: absolute; top: 18px; right: 10px; z-index: 10; font-size: 9px; color: rgba(255,255,255,0.5); letter-spacing: 1px; font-family: Anton, sans-serif">{{ awayName.toUpperCase() }} ▲</div>
-        <!-- Home team label (bottom) -->
-        <div style="position: absolute; bottom: 18px; left: 10px; z-index: 10; font-size: 9px; color: rgba(255,255,255,0.5); letter-spacing: 1px; font-family: Anton, sans-serif">▼ {{ homeName.toUpperCase() }}</div>
+        <!-- Home team label (left) -->
+        <div style="position: absolute; bottom: 8px; left: 10px; z-index: 10; font-size: 9px; color: rgba(255,255,255,0.5); letter-spacing: 1px; font-family: Anton, sans-serif">◀ {{ homeName.toUpperCase() }}</div>
+        <!-- Away team label (right) -->
+        <div style="position: absolute; bottom: 8px; right: 10px; z-index: 10; font-size: 9px; color: rgba(255,255,255,0.5); letter-spacing: 1px; font-family: Anton, sans-serif">{{ awayName.toUpperCase() }} ▶</div>
 
-        <!-- Pitch surface -->
-        <div style="position: relative; padding-top: 145%; background: linear-gradient(180deg, #166534 0%, #15803d 30%, #166534 50%, #15803d 70%, #166534 100%)">
-          <!-- SVG field markings -->
-          <svg style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none" viewBox="0 0 100 145" preserveAspectRatio="none">
+        <!-- Pitch surface — landscape (65% padding-top ≈ 154×100 ratio) -->
+        <div style="position: relative; padding-top: 65%; background: linear-gradient(90deg, #166534 0%, #15803d 25%, #166534 50%, #15803d 75%, #166534 100%)">
+          <!-- SVG field markings — landscape viewBox 0 0 154 100 -->
+          <svg style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none" viewBox="0 0 154 100" preserveAspectRatio="none">
             <!-- outer border -->
-            <rect x="4" y="3" width="92" height="139" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="0.5"/>
-            <!-- center line -->
-            <line x1="4" y1="72.5" x2="96" y2="72.5" stroke="rgba(255,255,255,0.25)" stroke-width="0.5"/>
+            <rect x="3" y="3" width="148" height="94" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="0.5"/>
+            <!-- center line (vertical) -->
+            <line x1="77" y1="3" x2="77" y2="97" stroke="rgba(255,255,255,0.25)" stroke-width="0.5"/>
             <!-- center circle -->
-            <circle cx="50" cy="72.5" r="11" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="0.5"/>
-            <circle cx="50" cy="72.5" r="0.8" fill="rgba(255,255,255,0.3)"/>
-            <!-- home penalty area (bottom) -->
-            <rect x="22" y="119" width="56" height="23" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.4"/>
-            <rect x="35" y="131" width="30" height="11" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.4"/>
-            <circle cx="50" cy="127" r="5.5" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="0.4"/>
-            <!-- away penalty area (top) -->
-            <rect x="22" y="3" width="56" height="23" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.4"/>
-            <rect x="35" y="3" width="30" height="11" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.4"/>
-            <circle cx="50" cy="18" r="5.5" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="0.4"/>
-            <!-- home goal -->
-            <rect x="38" y="142" width="24" height="2.5" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="0.5"/>
-            <!-- away goal -->
-            <rect x="38" y="0.5" width="24" height="2.5" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="0.5"/>
+            <circle cx="77" cy="50" r="10" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="0.5"/>
+            <circle cx="77" cy="50" r="0.8" fill="rgba(255,255,255,0.3)"/>
+            <!-- home penalty area (left) -->
+            <rect x="3" y="22" width="22" height="56" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.4"/>
+            <rect x="3" y="36" width="9" height="28" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.4"/>
+            <circle cx="17" cy="50" r="0.8" fill="rgba(255,255,255,0.25)"/>
+            <!-- away penalty area (right) -->
+            <rect x="129" y="22" width="22" height="56" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.4"/>
+            <rect x="142" y="36" width="9" height="28" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.4"/>
+            <circle cx="137" cy="50" r="0.8" fill="rgba(255,255,255,0.25)"/>
+            <!-- home goal (left edge) -->
+            <rect x="0" y="43" width="3" height="14" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="0.5"/>
+            <!-- away goal (right edge) -->
+            <rect x="151" y="43" width="3" height="14" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="0.5"/>
           </svg>
 
-          <!-- Away players (top) -->
-          <div v-for="dot in awayDots" :key="'away-' + dot.name"
-            style="position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none"
-            :style="{ left: dot.x + '%', top: dot.y + '%' }">
-            <div :style="{
-              width: '26px', height: '26px', borderRadius: '50%',
-              background: getFlagBg(awayName),
-              border: dot.position === 'GK' ? '2px solid #fbbf24' : '2px solid rgba(255,255,255,0.7)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '8px', fontWeight: 700, color: '#fff',
-              fontFamily: 'Anton, sans-serif', letterSpacing: '0.3px',
-              textShadow: '0 1px 2px rgba(0,0,0,0.8)',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
-              flexShrink: 0,
-            }">{{ dot.position === 'GK' ? 'GK' : '' }}</div>
-            <div style="font-size: 7.5px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.9); font-weight: 700; text-align: center; max-width: 44px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2">
-              {{ lastName(dot.name) }}
-            </div>
-          </div>
-
-          <!-- Home players (bottom) -->
+          <!-- Home players (left half) -->
           <div v-for="dot in homeDots" :key="'home-' + dot.name"
             style="position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none"
             :style="{ left: dot.x + '%', top: dot.y + '%' }">
             <div :style="{
-              width: '26px', height: '26px', borderRadius: '50%',
+              width: '24px', height: '24px', borderRadius: '50%',
               background: getFlagBg(homeName),
               border: dot.position === 'GK' ? '2px solid #fbbf24' : '2px solid rgba(255,255,255,0.7)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '8px', fontWeight: 700, color: '#fff',
-              fontFamily: 'Anton, sans-serif', letterSpacing: '0.3px',
+              fontSize: '7px', fontWeight: 700, color: '#fff',
+              fontFamily: 'Anton, sans-serif',
               textShadow: '0 1px 2px rgba(0,0,0,0.8)',
               boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
               flexShrink: 0,
             }">{{ dot.position === 'GK' ? 'GK' : '' }}</div>
-            <div style="font-size: 7.5px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.9); font-weight: 700; text-align: center; max-width: 44px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2">
+            <div style="font-size: 7px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.9); font-weight: 700; text-align: center; max-width: 40px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2">
+              {{ lastName(dot.name) }}
+            </div>
+          </div>
+
+          <!-- Away players (right half) -->
+          <div v-for="dot in awayDots" :key="'away-' + dot.name"
+            style="position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none"
+            :style="{ left: dot.x + '%', top: dot.y + '%' }">
+            <div :style="{
+              width: '24px', height: '24px', borderRadius: '50%',
+              background: getFlagBg(awayName),
+              border: dot.position === 'GK' ? '2px solid #fbbf24' : '2px solid rgba(255,255,255,0.7)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '7px', fontWeight: 700, color: '#fff',
+              fontFamily: 'Anton, sans-serif',
+              textShadow: '0 1px 2px rgba(0,0,0,0.8)',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
+              flexShrink: 0,
+            }">{{ dot.position === 'GK' ? 'GK' : '' }}</div>
+            <div style="font-size: 7px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.9); font-weight: 700; text-align: center; max-width: 40px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2">
               {{ lastName(dot.name) }}
             </div>
           </div>
