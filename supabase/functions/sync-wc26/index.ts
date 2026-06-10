@@ -67,6 +67,15 @@ Deno.serve(async () => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   )
 
+  // Skip external API call if no match is in the active window:
+  // from 1 hour before kick-off to 2h30 after kick-off (covers ET + stoppage time)
+  const { data: activeMatches } = await supabase.rpc('matches_in_active_window')
+  if (!activeMatches) {
+    return new Response(JSON.stringify({ skipped: true, reason: 'no match in active window' }), {
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
   // Fetch all matches from the WC26 API
   const apiRes = await fetch('https://wc26-live-football-api.p.rapidapi.com/matches', {
     headers: {
