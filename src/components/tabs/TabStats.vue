@@ -44,12 +44,12 @@ const topAssists  = computed(() => [...raw.value].filter(s => assists(s) > 0).so
 const topYellows  = computed(() => [...raw.value].filter(s => yellows(s) > 0).sort((a,b) => yellows(b) - yellows(a)).slice(0, 10))
 const topReds     = computed(() => [...raw.value].filter(s => reds(s) > 0)   .sort((a,b) => reds(b)    - reds(a))   .slice(0, 10))
 
-const SECTIONS = [
-  { key: 'goals',   label: 'Buteurs',            icon: '⚽', color: '#22c55e', list: topScorers,  val: goals   },
-  { key: 'assists', label: 'Passeurs décisifs',   icon: '🎯', color: '#60a5fa', list: topAssists,  val: assists },
-  { key: 'yellow',  label: 'Cartons jaunes',      icon: '🟨', color: '#fbbf24', list: topYellows,  val: yellows },
-  { key: 'red',     label: 'Cartons rouges',      icon: '🟥', color: '#ef4444', list: topReds,     val: reds    },
-] as const
+const sections = computed(() => [
+  { key: 'goals',   label: 'Buteurs',            icon: '⚽', color: '#22c55e', list: topScorers.value,  val: goals   },
+  { key: 'assists', label: 'Passeurs décisifs',   icon: '🎯', color: '#60a5fa', list: topAssists.value,  val: assists },
+  { key: 'yellow',  label: 'Cartons jaunes',      icon: '🟨', color: '#fbbf24', list: topYellows.value,  val: yellows },
+  { key: 'red',     label: 'Cartons rouges',      icon: '🟥', color: '#ef4444', list: topReds.value,     val: reds    },
+])
 </script>
 
 <template>
@@ -74,7 +74,7 @@ const SECTIONS = [
 
     <!-- Stats sections -->
     <template v-else>
-      <div v-for="section in SECTIONS" :key="section.key" :style="{ ...sCard, padding: '0', marginBottom: '16px', overflow: 'hidden' }">
+      <div v-for="section in sections" :key="section.key" :style="{ ...sCard, padding: '0', marginBottom: '16px', overflow: 'hidden' }">
         <!-- Section header -->
         <div :style="{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', borderBottom: '1px solid ' + C.border, background: 'rgba(15,23,42,0.5)' }">
           <span style="font-size: 18px">{{ section.icon }}</span>
