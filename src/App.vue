@@ -178,7 +178,7 @@ input, select, textarea { box-sizing: border-box; }
   padding: 10px 12px; min-width: 0; min-height: 46px;
 }
 .team-block .flag-bg {
-  position: absolute; inset: 0; opacity: 0.9; z-index: 0;
+  position: absolute; inset: 0; opacity: 0.9; z-index: 0; pointer-events: none;
 }
 .team-block .flag-bg::after {
   content: ""; position: absolute; inset: 0;
