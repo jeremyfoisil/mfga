@@ -8,6 +8,7 @@ import { C, sCard, sInput, sLabel, BONUS_LOCK_DATE } from '../../constants/ui'
 import { BONUS_TYPES, BONUS_ICONS } from '../../constants/bonus'
 import { ALL_TEAMS } from '../../constants/teams'
 import { initials } from '../../utils/ui'
+import PlayerSearch from '../ui/PlayerSearch.vue'
 
 const parts      = useParticipantsStore()
 const bonusStore = useBonusStore()
@@ -93,7 +94,11 @@ function getBonusIcon(id: string) { return BONUS_ICONS[id] }
                 </div>
               </template>
               <template v-else>
-                <input v-if="canEditBonusResult"
+                <PlayerSearch v-if="canEditBonusResult && b.id === 'topscorer'"
+                  :value="bonusStore.bonusResults[b.id + '_' + (i - 1)] || ''"
+                  placeholder="Rechercher un joueur…"
+                  @update="bonusStore.setBonusResult(b.id, i - 1, $event)" />
+                <input v-else-if="canEditBonusResult"
                   :style="{ ...sInput, borderColor: bonusStore.bonusResults[b.id + '_' + (i - 1)] ? '#22c55e66' : C.border }"
                   placeholder="À renseigner..."
                   :value="bonusStore.bonusResults[b.id + '_' + (i - 1)] || ''"
@@ -122,6 +127,10 @@ function getBonusIcon(id: string) { return BONUS_ICONS[id] }
                   <option value="">Choisir une équipe...</option>
                   <option v-for="team in ALL_TEAMS" :key="team" :value="team">{{ team }}</option>
                 </select>
+                <PlayerSearch v-else-if="b.id === 'topscorer'"
+                  :value="getBonusProno(p.id, b.id + '_' + (i - 1))"
+                  placeholder="Rechercher un joueur…"
+                  @update="bonusStore.setBonus(p.id, b.id, i - 1, $event)" />
                 <input v-else
                   :style="{ ...sInput, borderColor: C.border, background: '#1e293b' }"
                   placeholder="Mon pronostic..."
