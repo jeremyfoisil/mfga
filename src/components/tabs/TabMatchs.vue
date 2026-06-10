@@ -184,6 +184,18 @@ function toggleJoker(pid: number | null, matchId: number) {
       </div>
     </div>
 
+    <!-- Admin sync button -->
+    <div v-if="admin.isAdmin" style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px">
+      <button
+        :disabled="admin.syncLoading"
+        :style="{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: 'linear-gradient(135deg, #0f172a, #1e293b)', border: '1px solid rgba(34,197,94,0.4)', borderRadius: '8px', cursor: admin.syncLoading ? 'not-allowed' : 'pointer', fontFamily: 'Anton, sans-serif', fontSize: '11px', letterSpacing: '1px', color: '#22c55e', opacity: admin.syncLoading ? 0.6 : 1 }"
+        @click="admin.syncFromApi()">
+        <span>{{ admin.syncLoading ? '⏳' : '🔄' }}</span>
+        {{ admin.syncLoading ? 'SYNC…' : 'SYNC API' }}
+      </button>
+      <span v-if="admin.syncMsg" style="font-size: 11px; color: #22c55e">{{ admin.syncMsg }}</span>
+    </div>
+
     <!-- KO : aucun match disponible -->
     <div v-if="activeStageType === 'knockout' && koStageMatches.length === 0"
       :style="{ ...sCard, textAlign: 'center', padding: '32px 20px', color: C.muted }">

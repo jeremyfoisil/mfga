@@ -80,5 +80,23 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
-  return { isAdmin, showAdminModal, adminPassInput, adminPassError, showImportModal, importJsonText, importStatus, importLoading, openAdminModal, closeAdminModal, submitAdminPass, exitAdmin, importJson }
+  const syncLoading = ref(false)
+  const syncMsg     = ref('')
+
+  async function syncFromApi() {
+    syncLoading.value = true
+    syncMsg.value = ''
+    try {
+      const { data, error } = await sb.functions.invoke('sync-wc26')
+      if (error) throw error
+      syncMsg.value = `✓ ${(data as { synced: number }).synced} match(s) synchronisé(s)`
+    } catch (e) {
+      syncMsg.value = '✗ ' + (e as Error).message
+    } finally {
+      syncLoading.value = false
+      setTimeout(() => { syncMsg.value = '' }, 3000)
+    }
+  }
+
+  return { isAdmin, showAdminModal, adminPassInput, adminPassError, showImportModal, importJsonText, importStatus, importLoading, openAdminModal, closeAdminModal, submitAdminPass, exitAdmin, importJson, syncLoading, syncMsg, syncFromApi }
 })
