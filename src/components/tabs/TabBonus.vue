@@ -80,7 +80,7 @@ function getBonusIcon(id: string) { return BONUS_ICONS[id] }
                 <span :style="{ width: '8px', height: '8px', borderRadius: '50%', background: bonusStore.bonusResults[b.id + '_' + (i - 1)] ? '#22c55e' : C.muted }"></span>
                 <span :style="{ fontSize: '10px', color: bonusStore.bonusResults[b.id + '_' + (i - 1)] ? '#22c55e' : C.muted, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }">Résultat</span>
               </div>
-              <template v-if="['winner','finalist','semi'].includes(b.id)">
+              <template v-if="['winner','finalist','semi','surprise','upset'].includes(b.id)">
                 <select v-if="canEditBonusResult"
                   :style="{ ...sInput, borderColor: bonusStore.bonusResults[b.id + '_' + (i - 1)] ? '#22c55e66' : C.border }"
                   :value="bonusStore.bonusResults[b.id + '_' + (i - 1)] || ''"
@@ -115,7 +115,7 @@ function getBonusIcon(id: string) { return BONUS_ICONS[id] }
                 </div>
               </template>
               <template v-else>
-                <select v-if="['winner','finalist','semi'].includes(b.id)"
+                <select v-if="['winner','finalist','semi','surprise','upset'].includes(b.id)"
                   :style="{ ...sInput, borderColor: C.border, background: '#1e293b' }"
                   :value="getBonusProno(p.id, b.id + '_' + (i - 1))"
                   @change="bonusStore.setBonus(p.id, b.id, i - 1, ($event.target as HTMLSelectElement).value)">
