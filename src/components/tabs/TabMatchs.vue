@@ -8,6 +8,8 @@ import { useAuthStore } from '../../stores/auth'
 import { C, sCard, sInput, sLabel, KO_STAGES, GROUP_IDS } from '../../constants/ui'
 import { calcMatchPoints, matchStartsAtMs, formatDate } from '../../utils/match'
 import { getFlag, getFlagBg, initials } from '../../utils/ui'
+import LineupModal, { type LineupData } from '../modals/LineupModal.vue'
+import { sb } from '../../supabase'
 
 const parts        = useParticipantsStore()
 const matchesStore = useMatchesStore()
@@ -103,6 +105,32 @@ function getMatchPts(pid: number | null, matchId: number) {
   const m = matchesStore.matches.find(x => x.id === matchId)
   if (!m || pid === null) return 0
   return calcMatchPoints(pronos.pronostics[pid]?.[m.id], m.result)
+}
+
+// ── Lineup modal ───────────────────────────────────────────────────
+const lineup = ref<{
+  open: boolean
+  homeName: string
+  awayName: string
+  matchId: number
+  loading: boolean
+  data: LineupData | null
+  error: string | null
+}>({ open: false, homeName: '', awayName: '', matchId: 0, loading: false, data: null, error: null })
+
+async function openLineup(m: import('../../types').Match) {
+  lineup.value = { open: true, homeName: m.home, awayName: m.away, matchId: m.id, loading: true, data: null, error: null }
+  try {
+    const { data, error } = await sb.functions.invoke('squad-proxy', {
+      body: { home: m.home, away: m.away, matchId: m.id },
+    })
+    if (error) throw error
+    lineup.value.data = data as LineupData
+  } catch (e) {
+    lineup.value.error = (e as Error).message
+  } finally {
+    lineup.value.loading = false
+  }
 }
 
 function ptColor(pts: number, hasRes: boolean) {
@@ -235,12 +263,12 @@ function toggleJoker(pid: number | null, matchId: number) {
           <div class="team-block home">
             <div class="flag-bg" :style="{ background: m.homeKnown ? getFlagBg(m.home) : 'linear-gradient(135deg, #f59e0b33, #451a03)' }"></div>
             <span class="name" :style="{ color: m.homeKnown ? '#fff' : '#f59e0b' }">{{ m.home }}</span>
-            <span v-if="m.homeKnown" style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1">{{ getFlag(m.home) }}</span>
+            <span v-if="m.homeKnown" @click.stop="openLineup(m)" style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1; cursor: pointer" title="Voir la composition">{{ getFlag(m.home) }}</span>
           </div>
           <div style="display: flex; align-items: center"><span class="vs-chunk">VS</span></div>
           <div class="team-block away">
             <div class="flag-bg" :style="{ background: m.awayKnown ? getFlagBg(m.away) : 'linear-gradient(135deg, #451a03, #f59e0b33)' }"></div>
-            <span v-if="m.awayKnown" style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1">{{ getFlag(m.away) }}</span>
+            <span v-if="m.awayKnown" @click.stop="openLineup(m)" style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1; cursor: pointer" title="Voir la composition">{{ getFlag(m.away) }}</span>
             <span class="name" :style="{ color: m.awayKnown ? '#fff' : '#f59e0b' }">{{ m.away }}</span>
           </div>
         </div>
@@ -385,14 +413,14 @@ function toggleJoker(pid: number | null, matchId: number) {
           <div class="team-block home">
             <div class="flag-bg" :style="{ background: getFlagBg(m.home) }"></div>
             <span class="name">{{ m.home }}</span>
-            <span style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1">{{ getFlag(m.home) }}</span>
+            <span @click.stop="openLineup(m)" style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1; cursor: pointer" title="Voir la composition">{{ getFlag(m.home) }}</span>
           </div>
           <div style="display: flex; align-items: center">
             <span class="vs-chunk">VS</span>
           </div>
           <div class="team-block away">
             <div class="flag-bg" :style="{ background: getFlagBg(m.away) }"></div>
-            <span style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1">{{ getFlag(m.away) }}</span>
+            <span @click.stop="openLineup(m)" style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1; cursor: pointer" title="Voir la composition">{{ getFlag(m.away) }}</span>
             <span class="name">{{ m.away }}</span>
           </div>
         </div>
@@ -511,4 +539,15 @@ Giroud, 45"
       style="position: absolute; top: 38%; right: 18px; transform: translateY(-50%); width: 95px; z-index: 20; pointer-events: none; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6))" />
     </div>
   </div>
+
+  <!-- Lineup modal -->
+  <LineupModal
+    v-if="lineup.open"
+    :loading="lineup.loading"
+    :data="lineup.data"
+    :home-name="lineup.homeName"
+    :away-name="lineup.awayName"
+    :error="lineup.error"
+    @close="lineup.open = false"
+  />
 </template>
