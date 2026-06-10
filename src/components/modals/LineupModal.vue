@@ -198,7 +198,7 @@ function groupedSquad(players: Player[]) {
               boxShadow: '0 2px 8px rgba(0,0,0,0.7)',
               flexShrink: 0,
             }">{{ dot.position === 'GK' ? 'GK' : '' }}</div>
-            <div style="font-family: Anton, sans-serif; font-size: 9px; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,1), 0 0 6px rgba(0,0,0,0.8); font-weight: 700; text-align: center; max-width: 48px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: 0.3px">
+            <div style="font-family: Syne, sans-serif; font-size: 8px; color: #fff; font-weight: 800; text-align: center; max-width: 48px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: 0.5px">
               {{ lastName(dot.name) }}
             </div>
           </div>
@@ -218,7 +218,7 @@ function groupedSquad(players: Player[]) {
               boxShadow: '0 2px 8px rgba(0,0,0,0.7)',
               flexShrink: 0,
             }">{{ dot.position === 'GK' ? 'GK' : '' }}</div>
-            <div style="font-family: Anton, sans-serif; font-size: 9px; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,1), 0 0 6px rgba(0,0,0,0.8); font-weight: 700; text-align: center; max-width: 48px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: 0.3px">
+            <div style="font-family: Syne, sans-serif; font-size: 8px; color: #fff; font-weight: 800; text-align: center; max-width: 48px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: 0.5px">
               {{ lastName(dot.name) }}
             </div>
           </div>
