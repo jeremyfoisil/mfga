@@ -88,31 +88,36 @@ function groupedSquad(players: Player[]) {
 </script>
 
 <template>
+  <!-- Backdrop — click outside the card to close -->
   <div
-    style="position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 300; display: flex; flex-direction: column; align-items: center; overflow-y: auto; padding: 16px 0 32px"
+    style="position: fixed; inset: 0; background: rgba(0,0,0,0.82); z-index: 300; display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 20px 12px 40px"
     @click.self="emit('close')"
   >
-    <div style="width: 100%; max-width: 420px; padding: 0 12px">
+    <!-- Card — click.stop so backdrop's @click.self never fires on card clicks -->
+    <div
+      style="width: 100%; max-width: 420px; background: #0f172a; border: 1px solid #1e293b; border-radius: 14px; overflow: hidden"
+      @click.stop
+    >
 
       <!-- Header -->
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px">
-        <div style="display: flex; align-items: center; gap: 10px">
-          <span style="font-size: 28px; line-height: 1">{{ getFlag(homeName) }}</span>
-          <div>
-            <div style="font-family: Anton, sans-serif; font-size: 15px; color: #f8fafc; letter-spacing: 1px">{{ homeName }}</div>
-            <div v-if="homeXI" style="font-size: 10px; color: #94a3b8; letter-spacing: 1px">{{ homeXI.formation }}</div>
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 10px; gap: 8px">
+        <div style="display: flex; align-items: center; gap: 8px; min-width: 0">
+          <span style="font-size: 26px; line-height: 1; flex-shrink: 0">{{ getFlag(homeName) }}</span>
+          <div style="min-width: 0">
+            <div style="font-family: Anton, sans-serif; font-size: 14px; color: #f8fafc; letter-spacing: 0.8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ homeName }}</div>
+            <div v-if="homeXI" style="font-size: 10px; color: #64748b; letter-spacing: 1px">{{ homeXI.formation }}</div>
           </div>
         </div>
-        <div style="font-family: Anton, sans-serif; font-size: 12px; color: #64748b; letter-spacing: 1.5px">VS</div>
-        <div style="display: flex; align-items: center; gap: 10px; flex-direction: row-reverse">
-          <span style="font-size: 28px; line-height: 1">{{ getFlag(awayName) }}</span>
-          <div style="text-align: right">
-            <div style="font-family: Anton, sans-serif; font-size: 15px; color: #f8fafc; letter-spacing: 1px">{{ awayName }}</div>
-            <div v-if="awayXI" style="font-size: 10px; color: #94a3b8; letter-spacing: 1px">{{ awayXI.formation }}</div>
+        <div style="font-family: Anton, sans-serif; font-size: 11px; color: #475569; letter-spacing: 2px; flex-shrink: 0">VS</div>
+        <div style="display: flex; align-items: center; gap: 8px; flex-direction: row-reverse; min-width: 0">
+          <span style="font-size: 26px; line-height: 1; flex-shrink: 0">{{ getFlag(awayName) }}</span>
+          <div style="text-align: right; min-width: 0">
+            <div style="font-family: Anton, sans-serif; font-size: 14px; color: #f8fafc; letter-spacing: 0.8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ awayName }}</div>
+            <div v-if="awayXI" style="font-size: 10px; color: #64748b; letter-spacing: 1px">{{ awayXI.formation }}</div>
           </div>
         </div>
         <button @click="emit('close')"
-          style="position: absolute; right: 20px; top: 20px; background: rgba(30,41,59,0.9); border: 1px solid #334155; border-radius: 50%; width: 32px; height: 32px; color: #94a3b8; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0">✕</button>
+          style="flex-shrink: 0; background: #1e293b; border: 1px solid #334155; border-radius: 50%; width: 28px; height: 28px; color: #64748b; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center">✕</button>
       </div>
 
       <!-- Loading -->
@@ -125,7 +130,7 @@ function groupedSquad(players: Player[]) {
       <div v-else-if="error" style="text-align: center; padding: 40px; color: #ef4444; font-size: 13px">{{ error }}</div>
 
       <!-- Pitch -->
-      <div v-else-if="data" style="position: relative; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.6)">
+      <div v-else-if="data" style="position: relative; border-radius: 0; overflow: hidden; box-shadow: none; margin: 0">
         <!-- Source badge -->
         <div style="position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.15); border-radius: 999px; padding: 2px 10px; font-size: 9px; color: rgba(255,255,255,0.6); letter-spacing: 1.5px; font-family: Anton, sans-serif; white-space: nowrap">
           {{ data.source === 'lineup' ? '⚡ COMPO OFFICIELLE' : '📋 LISTE DU GROUPE' }}
@@ -204,26 +209,26 @@ function groupedSquad(players: Player[]) {
       </div>
 
       <!-- Squad lists -->
-      <div v-if="data && !loading" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px">
+      <div v-if="data && !loading" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: #1e293b; border-top: 1px solid #1e293b; margin-top: 0">
         <!-- Home squad -->
-        <div :style="{ background: '#0f172a', border: '1px solid ' + C.border, borderRadius: '10px', padding: '10px', overflow: 'hidden' }">
+        <div style="background: #0a0e1a; padding: 12px 10px">
           <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #1e293b">
-            <span style="font-size: 18px">{{ getFlag(homeName) }}</span>
-            <span style="font-family: Anton, sans-serif; font-size: 11px; color: #f8fafc; letter-spacing: 0.8px">{{ homeName }}</span>
+            <span style="font-size: 16px">{{ getFlag(homeName) }}</span>
+            <span style="font-family: Anton, sans-serif; font-size: 10px; color: #94a3b8; letter-spacing: 0.8px">{{ homeName }}</span>
           </div>
           <div v-for="group in groupedSquad(data.home.players)" :key="group.pos" style="margin-bottom: 10px">
-            <div style="font-size: 8px; color: #475569; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px">{{ group.label }}</div>
+            <div style="font-size: 8px; color: #334155; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px">{{ group.label }}</div>
             <div v-for="p in group.players" :key="p.name" style="font-size: 10px; color: #cbd5e1; padding: 2px 0; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ p.name }}</div>
           </div>
         </div>
         <!-- Away squad -->
-        <div :style="{ background: '#0f172a', border: '1px solid ' + C.border, borderRadius: '10px', padding: '10px', overflow: 'hidden' }">
+        <div style="background: #0a0e1a; padding: 12px 10px">
           <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #1e293b">
-            <span style="font-size: 18px">{{ getFlag(awayName) }}</span>
-            <span style="font-family: Anton, sans-serif; font-size: 11px; color: #f8fafc; letter-spacing: 0.8px">{{ awayName }}</span>
+            <span style="font-size: 16px">{{ getFlag(awayName) }}</span>
+            <span style="font-family: Anton, sans-serif; font-size: 10px; color: #94a3b8; letter-spacing: 0.8px">{{ awayName }}</span>
           </div>
           <div v-for="group in groupedSquad(data.away.players)" :key="group.pos" style="margin-bottom: 10px">
-            <div style="font-size: 8px; color: #475569; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px">{{ group.label }}</div>
+            <div style="font-size: 8px; color: #334155; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px">{{ group.label }}</div>
             <div v-for="p in group.players" :key="p.name" style="font-size: 10px; color: #cbd5e1; padding: 2px 0; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ p.name }}</div>
           </div>
         </div>

@@ -260,15 +260,15 @@ function toggleJoker(pid: number | null, matchId: number) {
       <div style="padding: 14px">
         <!-- Équipes (connues ou labels) -->
         <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: stretch; margin-bottom: 14px">
-          <div class="team-block home">
+          <div class="team-block home" :style="{ cursor: m.homeKnown ? 'pointer' : 'default' }" :title="m.homeKnown ? 'Voir la composition' : ''" @click.stop="m.homeKnown && openLineup(m)">
             <div class="flag-bg" :style="{ background: m.homeKnown ? getFlagBg(m.home) : 'linear-gradient(135deg, #f59e0b33, #451a03)' }"></div>
             <span class="name" :style="{ color: m.homeKnown ? '#fff' : '#f59e0b' }">{{ m.home }}</span>
-            <span v-if="m.homeKnown" @click.stop="openLineup(m)" style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1; cursor: pointer" title="Voir la composition">{{ getFlag(m.home) }}</span>
+            <span v-if="m.homeKnown" style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1">{{ getFlag(m.home) }}</span>
           </div>
           <div style="display: flex; align-items: center"><span class="vs-chunk">VS</span></div>
-          <div class="team-block away">
+          <div class="team-block away" :style="{ cursor: m.awayKnown ? 'pointer' : 'default' }" :title="m.awayKnown ? 'Voir la composition' : ''" @click.stop="m.awayKnown && openLineup(m)">
             <div class="flag-bg" :style="{ background: m.awayKnown ? getFlagBg(m.away) : 'linear-gradient(135deg, #451a03, #f59e0b33)' }"></div>
-            <span v-if="m.awayKnown" @click.stop="openLineup(m)" style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1; cursor: pointer" title="Voir la composition">{{ getFlag(m.away) }}</span>
+            <span v-if="m.awayKnown" style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1">{{ getFlag(m.away) }}</span>
             <span class="name" :style="{ color: m.awayKnown ? '#fff' : '#f59e0b' }">{{ m.away }}</span>
           </div>
         </div>
@@ -410,17 +410,17 @@ function toggleJoker(pid: number | null, matchId: number) {
       <!-- Teams + score inputs -->
       <div style="padding: 14px">
         <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: stretch; margin-bottom: 14px">
-          <div class="team-block home">
+          <div class="team-block home" style="cursor: pointer" title="Voir la composition" @click.stop="openLineup(m)">
             <div class="flag-bg" :style="{ background: getFlagBg(m.home) }"></div>
             <span class="name">{{ m.home }}</span>
-            <span @click.stop="openLineup(m)" style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1; cursor: pointer" title="Voir la composition">{{ getFlag(m.home) }}</span>
+            <span style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1">{{ getFlag(m.home) }}</span>
           </div>
           <div style="display: flex; align-items: center">
             <span class="vs-chunk">VS</span>
           </div>
-          <div class="team-block away">
+          <div class="team-block away" style="cursor: pointer" title="Voir la composition" @click.stop="openLineup(m)">
             <div class="flag-bg" :style="{ background: getFlagBg(m.away) }"></div>
-            <span @click.stop="openLineup(m)" style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1; cursor: pointer" title="Voir la composition">{{ getFlag(m.away) }}</span>
+            <span style="position: relative; z-index: 1; font-size: 20px; flex-shrink: 0; line-height: 1">{{ getFlag(m.away) }}</span>
             <span class="name">{{ m.away }}</span>
           </div>
         </div>

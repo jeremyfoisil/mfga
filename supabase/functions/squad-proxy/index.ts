@@ -1,6 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 
-const RAPIDAPI_KEY  = Deno.env.get('RAPIDAPI_KEY')
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+const RAPIDAPI_KEY  = Deno.env.get('RAPIDAPI_KEY') ?? '4f5231439dmshc22c83b5cde5ef3p1d9c86jsn739feb141fa8'
 const RAPIDAPI_HOST = 'wc26-live-football-api.p.rapidapi.com'
 
 type RawPosition = 'Goalkeeper' | 'Defender' | 'Midfielder' | 'Forward'
@@ -16,7 +21,7 @@ interface TeamData { name: string; players: Player[] }
 async function fetchSquad(team: string): Promise<Player[]> {
   const res = await fetch(
     `https://${RAPIDAPI_HOST}/squad/${encodeURIComponent(team)}`,
-    { headers: { 'x-rapidapi-host': RAPIDAPI_HOST, 'x-rapidapi-key': RAPIDAPI_KEY! } },
+    { headers: { 'x-rapidapi-host': RAPIDAPI_HOST, 'x-rapidapi-key': RAPIDAPI_KEY } },
   )
   if (!res.ok) return []
   const { data } = await res.json() as { data: { name: string; position: RawPosition }[] }
@@ -27,11 +32,10 @@ async function fetchLineup(matchId: number): Promise<{ home: TeamData; away: Tea
   try {
     const res = await fetch(
       `https://${RAPIDAPI_HOST}/lineup/${matchId}`,
-      { headers: { 'x-rapidapi-host': RAPIDAPI_HOST, 'x-rapidapi-key': RAPIDAPI_KEY! } },
+      { headers: { 'x-rapidapi-host': RAPIDAPI_HOST, 'x-rapidapi-key': RAPIDAPI_KEY } },
     )
     if (!res.ok) return null
     const json = await res.json()
-    // Guard against "Lineups not available yet" or empty response
     if (!json?.home?.players?.length && !json?.data?.home?.players?.length) return null
     const d = json.data ?? json
     if (!d.home || !d.away) return null
@@ -47,35 +51,22 @@ async function fetchLineup(matchId: number): Promise<{ home: TeamData; away: Tea
 }
 
 Deno.serve(async (req) => {
-  if (!RAPIDAPI_KEY) {
-    return new Response(JSON.stringify({ error: 'RAPIDAPI_KEY not set' }), {
-      status: 500, headers: { 'Content-Type': 'application/json' },
-    })
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: CORS })
   }
+
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } })
 
   const { home, away, matchId } = await req.json() as { home: string; away: string; matchId?: number }
 
-  if (!home || !away) {
-    return new Response(JSON.stringify({ error: 'home and away required' }), {
-      status: 400, headers: { 'Content-Type': 'application/json' },
-    })
-  }
+  if (!home || !away) return json({ error: 'home and away required' }, 400)
 
-  // Try official lineup first (only available on matchday, ~1h before kickoff)
   if (matchId) {
     const lineup = await fetchLineup(matchId)
-    if (lineup) {
-      return new Response(JSON.stringify({ source: 'lineup', ...lineup }), {
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
+    if (lineup) return json({ source: 'lineup', ...lineup })
   }
 
-  // Fallback: squad rosters
   const [homePlayers, awayPlayers] = await Promise.all([fetchSquad(home), fetchSquad(away)])
-  return new Response(JSON.stringify({
-    source: 'squad',
-    home: { name: home, players: homePlayers },
-    away: { name: away, players: awayPlayers },
-  }), { headers: { 'Content-Type': 'application/json' } })
+  return json({ source: 'squad', home: { name: home, players: homePlayers }, away: { name: away, players: awayPlayers } })
 })

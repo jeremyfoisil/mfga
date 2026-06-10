@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "jsr:@supabase/supabase-js@2"
 
-const RAPIDAPI_KEY = Deno.env.get('RAPIDAPI_KEY')
+const RAPIDAPI_KEY = Deno.env.get('RAPIDAPI_KEY') ?? '4f5231439dmshc22c83b5cde5ef3p1d9c86jsn739feb141fa8'
 
 interface ApiMatch {
   id: number
@@ -62,12 +62,6 @@ function parseGoals(liveData: unknown, side: 'home' | 'away'): Goal[] {
 }
 
 Deno.serve(async () => {
-  if (!RAPIDAPI_KEY) {
-    return new Response(JSON.stringify({ error: 'RAPIDAPI_KEY secret not set' }), {
-      status: 500, headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
