@@ -38,4 +38,4 @@ export const sCard  = { background: "#111827", border: "1px solid #1e293b", bord
 export const sInput = { background: "#1e293b", border: "1px solid #1e293b", borderRadius: "8px", color: "#f1f5f9", padding: "8px 12px", fontFamily: "'Syne', sans-serif", fontSize: "13px", outline: "none", width: "100%" }
 export const sLabel = { color: "#64748b", fontSize: "11px", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "1px", marginBottom: "6px", display: "block" }
 
-export const BONUS_LOCK_DATE = new Date(2026, 5, 11, 0, 0, 0) // 11 juin à minuit heure locale
+export const BONUS_LOCK_DATE = new Date("2026-06-11T21:59:00Z") // 11 juin 23:59 heure Paris (CEST = UTC+2)
