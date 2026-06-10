@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useParticipantsStore } from '../../stores/participants'
 import { useBonusStore } from '../../stores/bonus'
 import { useAdminStore } from '../../stores/admin'
@@ -9,6 +9,7 @@ import { BONUS_TYPES, BONUS_ICONS } from '../../constants/bonus'
 import { ALL_TEAMS } from '../../constants/teams'
 import { initials } from '../../utils/ui'
 import PlayerSearch from '../ui/PlayerSearch.vue'
+import { sb } from '../../supabase'
 
 const parts      = useParticipantsStore()
 const bonusStore = useBonusStore()
@@ -18,8 +19,47 @@ const auth       = useAuthStore()
 const myParticipantId    = computed(() => auth.profile?.participant_id ?? null)
 const bonusLocked        = computed(() => new Date() >= BONUS_LOCK_DATE)
 const canEditBonusResult = computed(() => admin.isAdmin && !bonusLocked.value)
+const syncingStats       = ref(false)
+const syncMsg            = ref('')
 
 function isMe(pid: number) { return pid === myParticipantId.value }
+
+async function syncResultsFromStats() {
+  syncingStats.value = true
+  syncMsg.value = ''
+  try {
+    const { data, error } = await sb.functions.invoke('stats-proxy')
+    if (error) throw error
+    const scorers: Array<Record<string, unknown>> = data?.data ?? []
+
+    function val(s: Record<string, unknown>, field: string) { return (s[field] as number) ?? 0 }
+
+    const topScorer = [...scorers]
+      .sort((a, b) => (val(b,'goals') || val(b,'scored')) - (val(a,'goals') || val(a,'scored')))
+      [0]
+    const topAssist = [...scorers]
+      .sort((a, b) => val(b,'assists') - val(a,'assists'))
+      [0]
+    const topFouler = [...scorers]
+      .sort((a, b) => {
+        const scoreB = (val(b,'yellow_cards') || val(b,'yellowCards') || val(b,'yellow')) + (val(b,'red_cards') || val(b,'redCards') || val(b,'red')) * 2
+        const scoreA = (val(a,'yellow_cards') || val(a,'yellowCards') || val(a,'yellow')) + (val(a,'red_cards') || val(a,'redCards') || val(a,'red')) * 2
+        return scoreB - scoreA
+      })
+      [0]
+
+    if (topScorer?.player) bonusStore.setBonusResult('topscorer', 0, topScorer.player as string)
+    if (topAssist?.player) bonusStore.setBonusResult('topassist', 0, topAssist.player as string)
+    if (topFouler?.player) bonusStore.setBonusResult('topfouler', 0, topFouler.player as string)
+
+    syncMsg.value = '✅ Résultats synchronisés depuis les stats'
+  } catch (e) {
+    syncMsg.value = '❌ Erreur : ' + (e as Error).message
+  } finally {
+    syncingStats.value = false
+    setTimeout(() => { syncMsg.value = '' }, 4000)
+  }
+}
 
 function getBonusValue(pid: number, bonusId: string, idx: number) {
   return bonusStore.bonusPronostics[pid]?.[bonusId + '_' + idx] ?? ''
@@ -54,6 +94,22 @@ function getBonusIcon(id: string) { return BONUS_ICONS[id] }
           <span v-else>À compléter avant le <b style="color: #f8fafc">11 juin 2026 à minuit</b> (Paris time).</span>
         </div>
       </div>
+    </div>
+
+    <!-- Admin: sync player results from stats -->
+    <div v-if="admin.isAdmin" :style="{ ...sCard, background: '#0a0e1a', border: '1px solid #1e293b', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }">
+      <div style="flex: 1; min-width: 0">
+        <div class="anton" style="font-size: 12px; color: #94a3b8; letter-spacing: 1px">SYNC DEPUIS LES STATS</div>
+        <div style="font-size: 11px; color: #475569; margin-top: 2px">Remplit automatiquement les résultats Buteur · Passeur · Découpeur depuis les statistiques live.</div>
+        <div v-if="syncMsg" style="font-size: 11px; margin-top: 4px; font-weight: 600" :style="{ color: syncMsg.startsWith('✅') ? '#22c55e' : '#ef4444' }">{{ syncMsg }}</div>
+      </div>
+      <button
+        :disabled="syncingStats"
+        @click="syncResultsFromStats"
+        style="flex-shrink: 0; background: #1e3a8a; color: #93c5fd; border: 1px solid #1d4ed8; border-radius: 8px; padding: 6px 14px; cursor: pointer; font-family: Anton, sans-serif; font-size: 12px; letter-spacing: 1px; opacity: 1; transition: opacity 0.2s"
+        :style="{ opacity: syncingStats ? 0.5 : 1 }">
+        {{ syncingStats ? '…' : '⟳ SYNC' }}
+      </button>
     </div>
 
     <div v-for="b in BONUS_TYPES" :key="b.id" class="card-rel" :style="{ ...sCard, padding: '0', overflow: 'hidden' }">
