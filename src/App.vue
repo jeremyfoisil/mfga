@@ -15,6 +15,7 @@ import TabMatchs from './components/tabs/TabMatchs.vue'
 import TabBonus from './components/tabs/TabBonus.vue'
 import TabTableau from './components/tabs/TabTableau.vue'
 import TabClassement from './components/tabs/TabClassement.vue'
+import TabStats from './components/tabs/TabStats.vue'
 
 const auth  = useAuthStore()
 const app   = useAppStore()
@@ -69,6 +70,7 @@ async function doLogout() {
         <TabBonus        v-else-if="app.tab === 2" />
         <TabTableau      v-else-if="app.tab === 3" />
         <TabClassement   v-else-if="app.tab === 4" />
+        <TabStats        v-else-if="app.tab === 5" />
       </div>
       <AdminModal  v-if="admin.showAdminModal" />
       <ImportModal v-if="admin.showImportModal" />
