@@ -68,9 +68,9 @@ async function doLogout() {
         <TabParticipants v-if="app.tab === 0" />
         <TabMatchs       v-else-if="app.tab === 1" />
         <TabBonus        v-else-if="app.tab === 2" />
-        <TabTableau      v-else-if="app.tab === 3" />
-        <TabClassement   v-else-if="app.tab === 4" />
-        <TabStats        v-else-if="app.tab === 5" />
+        <TabStats        v-else-if="app.tab === 3" />
+        <TabTableau      v-else-if="app.tab === 4" />
+        <TabClassement   v-else-if="app.tab === 5" />
       </div>
       <AdminModal  v-if="admin.showAdminModal" />
       <ImportModal v-if="admin.showImportModal" />
