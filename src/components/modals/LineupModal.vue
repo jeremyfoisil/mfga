@@ -198,7 +198,7 @@ function groupedSquad(players: Player[]) {
               boxShadow: '0 2px 8px rgba(0,0,0,0.7)',
               flexShrink: 0,
             }">{{ dot.position === 'GK' ? 'GK' : '' }}</div>
-            <div style="font-family: Syne, sans-serif; font-size: 8px; color: #fff; font-weight: 800; text-align: center; max-width: 52px; white-space: normal; word-break: break-word; line-height: 1.2; letter-spacing: 0.3px">
+            <div style="font-family: Anton, sans-serif; font-size: 8px; color: #fff; white-space: nowrap; letter-spacing: 0.5px; line-height: 1.2">
               {{ lastName(dot.name) }}
             </div>
           </div>
@@ -218,7 +218,7 @@ function groupedSquad(players: Player[]) {
               boxShadow: '0 2px 8px rgba(0,0,0,0.7)',
               flexShrink: 0,
             }">{{ dot.position === 'GK' ? 'GK' : '' }}</div>
-            <div style="font-family: Syne, sans-serif; font-size: 8px; color: #fff; font-weight: 800; text-align: center; max-width: 52px; white-space: normal; word-break: break-word; line-height: 1.2; letter-spacing: 0.3px">
+            <div style="font-family: Anton, sans-serif; font-size: 8px; color: #fff; white-space: nowrap; letter-spacing: 0.5px; line-height: 1.2">
               {{ lastName(dot.name) }}
             </div>
           </div>
