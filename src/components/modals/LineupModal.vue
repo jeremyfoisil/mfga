@@ -31,9 +31,9 @@ const Y_POS: Record<number, number[]> = {
   6: [7, 21, 38, 62, 79, 93],
 }
 
-// X position per row type — landscape pitch, home on left, away on right
-const HOME_X: Record<string, number> = { GK: 6, DEF: 22, MID: 38, FWD: 52 }
-const AWAY_X: Record<string, number> = { GK: 94, DEF: 78, MID: 62, FWD: 48 }
+// X position per row type — landscape pitch, home on left, away on right (max 47 / min 53)
+const HOME_X: Record<string, number> = { GK: 6, DEF: 20, MID: 34, FWD: 46 }
+const AWAY_X: Record<string, number> = { GK: 94, DEF: 80, MID: 66, FWD: 54 }
 
 function buildXI(players: Player[]) {
   const gks  = players.filter(p => p.position === 'GK').slice(0, 1)
@@ -82,6 +82,7 @@ const homeXI   = computed(() => props.data ? buildXI(props.data.home.players) : 
 const awayXI   = computed(() => props.data ? buildXI(props.data.away.players) : null)
 const homeDots = computed(() => homeXI.value ? toDots(homeXI.value, 'home') : [])
 const awayDots = computed(() => awayXI.value ? toDots(awayXI.value, 'away') : [])
+const hasPlayers = computed(() => homeDots.value.length > 0 || awayDots.value.length > 0)
 
 const POS_LABEL: Record<string, string> = { GK: 'Gardien', DEF: 'Défenseurs', MID: 'Milieux', FWD: 'Attaquants' }
 
@@ -173,22 +174,31 @@ function groupedSquad(players: Player[]) {
             <rect x="151" y="43" width="3" height="14" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="0.5"/>
           </svg>
 
+          <!-- Message si aucun joueur -->
+          <div v-if="!hasPlayers"
+            style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none">
+            <div style="background: rgba(0,0,0,0.65); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 20px; font-family: Anton, sans-serif; font-size: 13px; color: rgba(255,255,255,0.7); letter-spacing: 1px; text-align: center">
+              Compositions non disponibles
+            </div>
+          </div>
+
           <!-- Home players (left half) -->
+          <template v-if="hasPlayers">
           <div v-for="dot in homeDots" :key="'home-' + dot.name"
             style="position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none"
             :style="{ left: dot.x + '%', top: dot.y + '%' }">
             <div :style="{
-              width: '24px', height: '24px', borderRadius: '50%',
+              width: '26px', height: '26px', borderRadius: '50%',
               background: getFlagBg(homeName),
-              border: dot.position === 'GK' ? '2px solid #fbbf24' : '2px solid rgba(255,255,255,0.7)',
+              border: dot.position === 'GK' ? '2px solid #fbbf24' : '2px solid rgba(255,255,255,0.8)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '7px', fontWeight: 700, color: '#fff',
+              fontSize: '8px', fontWeight: 700, color: '#fff',
               fontFamily: 'Anton, sans-serif',
-              textShadow: '0 1px 2px rgba(0,0,0,0.8)',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
+              textShadow: '0 1px 3px rgba(0,0,0,1)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.7)',
               flexShrink: 0,
             }">{{ dot.position === 'GK' ? 'GK' : '' }}</div>
-            <div style="font-size: 7px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.9); font-weight: 700; text-align: center; max-width: 40px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2">
+            <div style="font-family: Anton, sans-serif; font-size: 9px; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,1), 0 0 6px rgba(0,0,0,0.8); font-weight: 700; text-align: center; max-width: 48px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: 0.3px">
               {{ lastName(dot.name) }}
             </div>
           </div>
@@ -198,20 +208,21 @@ function groupedSquad(players: Player[]) {
             style="position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none"
             :style="{ left: dot.x + '%', top: dot.y + '%' }">
             <div :style="{
-              width: '24px', height: '24px', borderRadius: '50%',
+              width: '26px', height: '26px', borderRadius: '50%',
               background: getFlagBg(awayName),
-              border: dot.position === 'GK' ? '2px solid #fbbf24' : '2px solid rgba(255,255,255,0.7)',
+              border: dot.position === 'GK' ? '2px solid #fbbf24' : '2px solid rgba(255,255,255,0.8)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '7px', fontWeight: 700, color: '#fff',
+              fontSize: '8px', fontWeight: 700, color: '#fff',
               fontFamily: 'Anton, sans-serif',
-              textShadow: '0 1px 2px rgba(0,0,0,0.8)',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
+              textShadow: '0 1px 3px rgba(0,0,0,1)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.7)',
               flexShrink: 0,
             }">{{ dot.position === 'GK' ? 'GK' : '' }}</div>
-            <div style="font-size: 7px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.9); font-weight: 700; text-align: center; max-width: 40px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2">
+            <div style="font-family: Anton, sans-serif; font-size: 9px; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,1), 0 0 6px rgba(0,0,0,0.8); font-weight: 700; text-align: center; max-width: 48px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: 0.3px">
               {{ lastName(dot.name) }}
             </div>
           </div>
+          </template>
         </div>
       </div>
 
@@ -219,9 +230,8 @@ function groupedSquad(players: Player[]) {
       <div v-if="data && !loading" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: #1e293b; border-top: 1px solid #1e293b; margin-top: 0">
         <!-- Home squad -->
         <div style="background: #0a0e1a; padding: 12px 10px">
-          <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #1e293b">
-            <span style="font-size: 16px">{{ getFlag(homeName) }}</span>
-            <span style="font-family: Anton, sans-serif; font-size: 10px; color: #94a3b8; letter-spacing: 0.8px">{{ homeName }}</span>
+          <div style="margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #1e293b">
+            <span style="font-family: Anton, sans-serif; font-size: 11px; color: #f8fafc; letter-spacing: 0.8px">{{ homeName }}</span>
           </div>
           <div v-for="group in groupedSquad(data.home.players)" :key="group.pos" style="margin-bottom: 10px">
             <div style="font-size: 8px; color: #334155; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px">{{ group.label }}</div>
@@ -230,9 +240,8 @@ function groupedSquad(players: Player[]) {
         </div>
         <!-- Away squad -->
         <div style="background: #0a0e1a; padding: 12px 10px">
-          <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #1e293b">
-            <span style="font-size: 16px">{{ getFlag(awayName) }}</span>
-            <span style="font-family: Anton, sans-serif; font-size: 10px; color: #94a3b8; letter-spacing: 0.8px">{{ awayName }}</span>
+          <div style="margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #1e293b">
+            <span style="font-family: Anton, sans-serif; font-size: 11px; color: #f8fafc; letter-spacing: 0.8px">{{ awayName }}</span>
           </div>
           <div v-for="group in groupedSquad(data.away.players)" :key="group.pos" style="margin-bottom: 10px">
             <div style="font-size: 8px; color: #334155; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px">{{ group.label }}</div>
