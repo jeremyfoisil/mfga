@@ -85,12 +85,20 @@ export const useAdminStore = defineStore('admin', () => {
   let syncMsgTimer: ReturnType<typeof setTimeout> | null = null
 
   async function syncFromApi() {
+    const matchesStore = useMatchesStore()
     syncLoading.value = true
     syncMsg.value = ''
     try {
       const { data, error } = await sb.functions.invoke('sync-wc26')
       if (error) throw error
-      syncMsg.value = `✓ ${(data as { synced: number }).synced} match(s) synchronisé(s)`
+      const result = data as { synced: number; message?: string }
+      if (result.synced === 0) {
+        syncMsg.value = '– Aucun match en cours'
+      } else {
+        syncMsg.value = `✓ ${result.synced} match(s) synchronisé(s)`
+        const { data: mData } = await sb.from('matches').select('*').order('id')
+        matchesStore.matches = (mData || []).map(mapMatchRow)
+      }
     } catch (e) {
       syncMsg.value = '✗ ' + (e as Error).message
     } finally {
