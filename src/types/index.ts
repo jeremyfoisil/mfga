@@ -29,6 +29,7 @@ export interface Match {
   matchTime: string
   venue: string
   round: string
+  liveStatus: string
 }
 
 export interface Participant {
