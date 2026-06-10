@@ -82,6 +82,7 @@ export const useAdminStore = defineStore('admin', () => {
 
   const syncLoading = ref(false)
   const syncMsg     = ref('')
+  let syncMsgTimer: ReturnType<typeof setTimeout> | null = null
 
   async function syncFromApi() {
     syncLoading.value = true
@@ -94,7 +95,8 @@ export const useAdminStore = defineStore('admin', () => {
       syncMsg.value = '✗ ' + (e as Error).message
     } finally {
       syncLoading.value = false
-      setTimeout(() => { syncMsg.value = '' }, 3000)
+      if (syncMsgTimer) clearTimeout(syncMsgTimer)
+      syncMsgTimer = setTimeout(() => { syncMsg.value = '' }, 3000)
     }
   }
 
