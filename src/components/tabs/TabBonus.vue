@@ -94,7 +94,7 @@ function getBonusIcon(id: string) { return BONUS_ICONS[id] }
                 </div>
               </template>
               <template v-else>
-                <PlayerSearch v-if="canEditBonusResult && b.id === 'topscorer'"
+                <PlayerSearch v-if="canEditBonusResult && ['topscorer','topassist','topfouler'].includes(b.id)"
                   :value="bonusStore.bonusResults[b.id + '_' + (i - 1)] || ''"
                   placeholder="Rechercher un joueur…"
                   @update="bonusStore.setBonusResult(b.id, i - 1, $event)" />
@@ -127,7 +127,7 @@ function getBonusIcon(id: string) { return BONUS_ICONS[id] }
                   <option value="">Choisir une équipe...</option>
                   <option v-for="team in ALL_TEAMS" :key="team" :value="team">{{ team }}</option>
                 </select>
-                <PlayerSearch v-else-if="b.id === 'topscorer'"
+                <PlayerSearch v-else-if="['topscorer','topassist','topfouler'].includes(b.id)"
                   :value="getBonusProno(p.id, b.id + '_' + (i - 1))"
                   placeholder="Rechercher un joueur…"
                   @update="bonusStore.setBonus(p.id, b.id, i - 1, $event)" />
