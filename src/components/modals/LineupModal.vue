@@ -83,6 +83,7 @@ const awayXI   = computed(() => props.data ? buildXI(props.data.away.players) : 
 const homeDots = computed(() => homeXI.value ? toDots(homeXI.value, 'home') : [])
 const awayDots = computed(() => awayXI.value ? toDots(awayXI.value, 'away') : [])
 const hasPlayers = computed(() => homeDots.value.length > 0 || awayDots.value.length > 0)
+const showLineup = computed(() => props.data?.source === 'lineup' && hasPlayers.value)
 
 const POS_LABEL: Record<string, string> = { GK: 'Gardien', DEF: 'Défenseurs', MID: 'Milieux', FWD: 'Attaquants' }
 
@@ -174,8 +175,8 @@ function groupedSquad(players: Player[]) {
             <rect x="151" y="43" width="3" height="14" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="0.5"/>
           </svg>
 
-          <!-- Message si aucun joueur -->
-          <div v-if="!hasPlayers"
+          <!-- Message si pas de lineup officiel -->
+          <div v-if="!showLineup"
             style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none">
             <div style="background: rgba(0,0,0,0.65); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 20px; font-family: Anton, sans-serif; font-size: 13px; color: rgba(255,255,255,0.7); letter-spacing: 1px; text-align: center">
               Compositions non disponibles
@@ -183,7 +184,7 @@ function groupedSquad(players: Player[]) {
           </div>
 
           <!-- Home players (left half) -->
-          <template v-if="hasPlayers">
+          <template v-if="showLineup">
           <div v-for="dot in homeDots" :key="'home-' + dot.name"
             style="position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none"
             :style="{ left: dot.x + '%', top: dot.y + '%' }">
