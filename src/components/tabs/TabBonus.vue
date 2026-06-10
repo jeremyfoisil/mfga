@@ -51,7 +51,7 @@ function getBonusIcon(id: string) { return BONUS_ICONS[id] }
         <div class="anton" style="font-size: 14px; color: #fbbf24; letter-spacing: 1px; margin-bottom: 2px">PRONOSTICS BONUS</div>
         <div :style="{ fontSize: '11px', color: C.muted, lineHeight: 1.5 }">
           <span v-if="bonusLocked" style="color: #ef4444; font-weight: 700">🔒 Verrouillé depuis le 11 juin 2026.</span>
-          <span v-else>À rendre avant le <b style="color: #f8fafc">11 juin 2026</b>. Saisissez vos prédictions avant le coup d'envoi.</span>
+          <span v-else>À compléter avant le <b style="color: #f8fafc">11 juin 2026 à minuit</b> (Paris time).</span>
         </div>
       </div>
     </div>
