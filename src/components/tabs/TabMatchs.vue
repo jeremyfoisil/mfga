@@ -210,6 +210,11 @@ function toggleJoker(pid: number | null, matchId: number) {
         <div style="display: flex; align-items: center; gap: 8px">
           <span v-if="m.venue" :style="{ color: '#475569', fontSize: '10px' }">📍 {{ m.venue }}</span>
           <div v-if="isJokerMatch(activeParticipant, m.id)" style="font-size: 10px; background: linear-gradient(90deg, #f59e0b, #d97706); color: #0a0e1a; border-radius: 4px; padding: 3px 8px; font-weight: 800; font-family: Anton, sans-serif; letter-spacing: 1px">🃏 JOKER ×2</div>
+          <div v-if="m.liveStatus === 'live'"
+            style="display: flex; align-items: center; gap: 5px; background: rgba(220,38,38,0.15); border: 1px solid rgba(220,38,38,0.4); border-radius: 6px; padding: 3px 8px">
+            <span class="live-dot" style="width: 6px; height: 6px; background: #ef4444"></span>
+            <span style="font-family: Anton, sans-serif; font-size: 10px; color: #fca5a5; letter-spacing: 1px">EN DIRECT</span>
+          </div>
         </div>
       </div>
       <div style="padding: 14px">
@@ -354,6 +359,11 @@ function toggleJoker(pid: number | null, matchId: number) {
         <div style="display: flex; align-items: center; gap: 8px">
           <span v-if="m.venue" :style="{ color: '#475569', fontSize: '10px' }">📍 {{ m.venue }}</span>
           <div v-if="isJokerMatch(activeParticipant, m.id)" style="font-size: 10px; background: linear-gradient(90deg, #f59e0b, #d97706); color: #0a0e1a; border-radius: 4px; padding: 3px 8px; font-weight: 800; font-family: Anton, sans-serif; letter-spacing: 1px">🃏 JOKER ×2</div>
+          <div v-if="m.liveStatus === 'live'"
+            style="display: flex; align-items: center; gap: 5px; background: rgba(220,38,38,0.15); border: 1px solid rgba(220,38,38,0.4); border-radius: 6px; padding: 3px 8px">
+            <span class="live-dot" style="width: 6px; height: 6px; background: #ef4444"></span>
+            <span style="font-family: Anton, sans-serif; font-size: 10px; color: #fca5a5; letter-spacing: 1px">EN DIRECT</span>
+          </div>
         </div>
       </div>
 
