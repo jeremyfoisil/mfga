@@ -90,7 +90,7 @@ function groupedSquad(players: Player[]) {
 <template>
   <!-- Backdrop — click outside the card to close -->
   <div
-    style="position: fixed; inset: 0; background: rgba(0,0,0,0.82); z-index: 300; display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 20px 12px 40px"
+    style="position: fixed; inset: 0; background: rgba(0,0,0,0.82); z-index: 1000; display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 20px 12px 40px"
     @click.self="emit('close')"
   >
     <!-- Card — click.stop so backdrop's @click.self never fires on card clicks -->
