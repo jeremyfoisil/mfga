@@ -334,46 +334,52 @@ function toggleJoker(pid: number | null, matchId: number) {
           Équipes à définir à l'issue de la phase de groupes
         </div>
 
-        <!-- Buteurs KO -->
-        <div v-if="m.homeKnown && m.awayKnown && (m.result.goalsHome.length || m.result.goalsAway.length || canEditResult)" style="margin-top: 10px">
-          <div v-if="m.result.goalsHome.length || m.result.goalsAway.length"
-            :style="{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', paddingBottom: canEditResult ? '8px' : '0', marginBottom: canEditResult ? '8px' : '0', borderBottom: canEditResult ? '1px dashed #1e293b' : 'none' }">
-            <div style="text-align: right">
-              <div v-for="g in [...m.result.goalsHome].sort((a,b) => a.minute - b.minute)" :key="g.name + g.minute" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
-                {{ g.name }}<span v-if="g.owngoal" style="color: #ef4444"> (csc)</span><span v-if="g.penalty" style="color: #f59e0b"> ⚽(p)</span><span v-else> ⚽</span> <span style="color: #64748b">{{ g.minute }}'</span>
+        <!-- Buts + Cartons KO (colonnes séparées) -->
+        <div v-if="m.homeKnown && m.awayKnown && (m.result.goalsHome.length || m.result.goalsAway.length || m.result.cardsHome.length || m.result.cardsAway.length)"
+          style="margin-top: 10px; display: flex; gap: 14px; align-items: flex-start">
+          <!-- Colonne Buts -->
+          <div v-if="m.result.goalsHome.length || m.result.goalsAway.length" style="flex: 1; min-width: 0">
+            <div style="font-size: 9px; color: #475569; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; text-align: center">⚽ Buts</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
+              <div style="text-align: right">
+                <div v-for="g in [...m.result.goalsHome].sort((a,b) => a.minute - b.minute)" :key="g.name + g.minute" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
+                  {{ g.name }}<span v-if="g.owngoal" style="color: #ef4444"> (csc)</span><span v-if="g.penalty" style="color: #f59e0b"> (p)</span> <span style="color: #64748b">{{ g.minute }}'</span>
+                </div>
               </div>
-            </div>
-            <div>
-              <div v-for="g in [...m.result.goalsAway].sort((a,b) => a.minute - b.minute)" :key="g.name + g.minute" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
-                <span style="color: #64748b">{{ g.minute }}'</span><span v-if="g.penalty" style="color: #f59e0b"> ⚽(p)</span><span v-else> ⚽</span><span v-if="g.owngoal" style="color: #ef4444"> (csc)</span> {{ g.name }}
+              <div>
+                <div v-for="g in [...m.result.goalsAway].sort((a,b) => a.minute - b.minute)" :key="g.name + g.minute" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
+                  <span style="color: #64748b">{{ g.minute }}'</span><span v-if="g.penalty" style="color: #f59e0b"> (p)</span><span v-if="g.owngoal" style="color: #ef4444"> (csc)</span> {{ g.name }}
+                </div>
               </div>
             </div>
           </div>
-          <template v-if="canEditResult">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px">
-              <div>
-                <div style="font-size: 9px; color: #64748b; margin-bottom: 2px; text-align: right">← Buteurs dom.</div>
-                <textarea :style="{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '4px', color: '#94a3b8', fontSize: '10px', width: '100%', padding: '4px 6px', fontFamily: 'Syne, sans-serif', resize: 'vertical', minHeight: '40px', outline: 'none', lineHeight: '1.5' }" placeholder='Nom, min [, pen/csc]' :value="m.result.goalsHomeText" @input="setMatchGoalText(m.id, 'home', ($event.target as HTMLTextAreaElement).value)"></textarea>
+          <!-- Colonne Cartons -->
+          <div v-if="m.result.cardsHome.length || m.result.cardsAway.length" style="flex: 1; min-width: 0">
+            <div style="font-size: 9px; color: #475569; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; text-align: center">🟨 Cartons</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
+              <div style="text-align: right">
+                <div v-for="c in [...m.result.cardsHome].sort((a,b) => a.minute - b.minute)" :key="c.name + c.minute" style="font-size: 10px; color: #94a3b8; line-height: 1.7">
+                  {{ c.name }} <span style="font-size: 9px">{{ c.red ? '🟥' : '🟨' }}</span> <span style="color: #64748b">{{ c.minute }}'</span>
+                </div>
               </div>
               <div>
-                <div style="font-size: 9px; color: #64748b; margin-bottom: 2px">Buteurs ext. →</div>
-                <textarea :style="{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '4px', color: '#94a3b8', fontSize: '10px', width: '100%', padding: '4px 6px', fontFamily: 'Syne, sans-serif', resize: 'vertical', minHeight: '40px', outline: 'none', lineHeight: '1.5' }" placeholder='Nom, min [, pen/csc]' :value="m.result.goalsAwayText" @input="setMatchGoalText(m.id, 'away', ($event.target as HTMLTextAreaElement).value)"></textarea>
+                <div v-for="c in [...m.result.cardsAway].sort((a,b) => a.minute - b.minute)" :key="c.name + c.minute" style="font-size: 10px; color: #94a3b8; line-height: 1.7">
+                  <span style="color: #64748b">{{ c.minute }}'</span> <span style="font-size: 9px">{{ c.red ? '🟥' : '🟨' }}</span> {{ c.name }}
+                </div>
               </div>
             </div>
-          </template>
+          </div>
         </div>
 
-        <!-- Cartons KO -->
-        <div v-if="m.result.cardsHome.length || m.result.cardsAway.length" style="margin-top: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
-          <div style="text-align: right">
-            <div v-for="c in [...m.result.cardsHome].sort((a,b) => a.minute - b.minute)" :key="c.name + c.minute" style="font-size: 10px; color: #94a3b8; line-height: 1.6">
-              {{ c.name }} <span style="font-size: 9px">{{ c.red ? '🟥' : '🟨' }}</span> <span style="color: #64748b">{{ c.minute }}'</span>
-            </div>
+        <!-- Édition buteurs KO (admin) -->
+        <div v-if="m.homeKnown && m.awayKnown && canEditResult" style="margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px">
+          <div>
+            <div style="font-size: 9px; color: #64748b; margin-bottom: 2px; text-align: right">← Buteurs dom.</div>
+            <textarea :style="{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '4px', color: '#94a3b8', fontSize: '10px', width: '100%', padding: '4px 6px', fontFamily: 'Syne, sans-serif', resize: 'vertical', minHeight: '40px', outline: 'none', lineHeight: '1.5' }" placeholder='Nom, min [, pen/csc]' :value="m.result.goalsHomeText" @input="setMatchGoalText(m.id, 'home', ($event.target as HTMLTextAreaElement).value)"></textarea>
           </div>
           <div>
-            <div v-for="c in [...m.result.cardsAway].sort((a,b) => a.minute - b.minute)" :key="c.name + c.minute" style="font-size: 10px; color: #94a3b8; line-height: 1.6">
-              <span style="color: #64748b">{{ c.minute }}'</span> <span style="font-size: 9px">{{ c.red ? '🟥' : '🟨' }}</span> {{ c.name }}
-            </div>
+            <div style="font-size: 9px; color: #64748b; margin-bottom: 2px">Buteurs ext. →</div>
+            <textarea :style="{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '4px', color: '#94a3b8', fontSize: '10px', width: '100%', padding: '4px 6px', fontFamily: 'Syne, sans-serif', resize: 'vertical', minHeight: '40px', outline: 'none', lineHeight: '1.5' }" placeholder='Nom, min [, pen/csc]' :value="m.result.goalsAwayText" @input="setMatchGoalText(m.id, 'away', ($event.target as HTMLTextAreaElement).value)"></textarea>
           </div>
         </div>
 
@@ -495,58 +501,62 @@ function toggleJoker(pid: number | null, matchId: number) {
           </div>
         </div>
 
-        <!-- Goals section -->
-        <div v-if="m.result.goalsHome.length || m.result.goalsAway.length || canEditResult" style="margin-top: 10px">
-          <div v-if="m.result.goalsHome.length || m.result.goalsAway.length"
-            :style="{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', paddingBottom: canEditResult ? '8px' : '0', marginBottom: canEditResult ? '8px' : '0', borderBottom: canEditResult ? '1px dashed #1e293b' : 'none' }">
-            <div style="text-align: right">
-              <div v-for="g in [...m.result.goalsHome].sort((a,b) => a.minute - b.minute)" :key="g.name + g.minute"
-                style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
-                {{ g.name }}<span v-if="g.owngoal" style="color: #ef4444"> (csc)</span><span v-if="g.penalty" style="color: #f59e0b"> ⚽(p)</span><span v-else> ⚽</span> <span style="color: #64748b">{{ g.minute }}'</span>
+        <!-- Buts + Cartons (colonnes séparées) -->
+        <div v-if="m.result.goalsHome.length || m.result.goalsAway.length || m.result.cardsHome.length || m.result.cardsAway.length"
+          style="margin-top: 10px; display: flex; gap: 14px; align-items: flex-start">
+          <!-- Colonne Buts -->
+          <div v-if="m.result.goalsHome.length || m.result.goalsAway.length" style="flex: 1; min-width: 0">
+            <div style="font-size: 9px; color: #475569; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; text-align: center">⚽ Buts</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
+              <div style="text-align: right">
+                <div v-for="g in [...m.result.goalsHome].sort((a,b) => a.minute - b.minute)" :key="g.name + g.minute" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
+                  {{ g.name }}<span v-if="g.owngoal" style="color: #ef4444"> (csc)</span><span v-if="g.penalty" style="color: #f59e0b"> (p)</span> <span style="color: #64748b">{{ g.minute }}'</span>
+                </div>
               </div>
-            </div>
-            <div>
-              <div v-for="g in [...m.result.goalsAway].sort((a,b) => a.minute - b.minute)" :key="g.name + g.minute"
-                style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
-                <span style="color: #64748b">{{ g.minute }}'</span><span v-if="g.penalty" style="color: #f59e0b"> ⚽(p)</span><span v-else> ⚽</span><span v-if="g.owngoal" style="color: #ef4444"> (csc)</span> {{ g.name }}
+              <div>
+                <div v-for="g in [...m.result.goalsAway].sort((a,b) => a.minute - b.minute)" :key="g.name + g.minute" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
+                  <span style="color: #64748b">{{ g.minute }}'</span><span v-if="g.penalty" style="color: #f59e0b"> (p)</span><span v-if="g.owngoal" style="color: #ef4444"> (csc)</span> {{ g.name }}
+                </div>
               </div>
             </div>
           </div>
-          <template v-if="canEditResult">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px">
-              <div>
-                <div style="font-size: 9px; color: #64748b; margin-bottom: 2px; text-align: right">← Buteurs dom. (Nom, min [, pen/csc])</div>
-                <textarea
-                  :style="{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '4px', color: '#94a3b8', fontSize: '10px', width: '100%', padding: '4px 6px', fontFamily: 'Syne, sans-serif', resize: 'vertical', minHeight: '40px', outline: 'none', lineHeight: '1.5' }"
-                  placeholder="Messi, 10, pen
-Alvarez, 39"
-                  :value="m.result.goalsHomeText"
-                  @input="setMatchGoalText(m.id, 'home', ($event.target as HTMLTextAreaElement).value)"></textarea>
+          <!-- Colonne Cartons -->
+          <div v-if="m.result.cardsHome.length || m.result.cardsAway.length" style="flex: 1; min-width: 0">
+            <div style="font-size: 9px; color: #475569; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; text-align: center">🟨 Cartons</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
+              <div style="text-align: right">
+                <div v-for="c in [...m.result.cardsHome].sort((a,b) => a.minute - b.minute)" :key="c.name + c.minute" style="font-size: 10px; color: #94a3b8; line-height: 1.7">
+                  {{ c.name }} <span style="font-size: 9px">{{ c.red ? '🟥' : '🟨' }}</span> <span style="color: #64748b">{{ c.minute }}'</span>
+                </div>
               </div>
               <div>
-                <div style="font-size: 9px; color: #64748b; margin-bottom: 2px">Buteurs ext. → (Nom, min [, pen/csc])</div>
-                <textarea
-                  :style="{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '4px', color: '#94a3b8', fontSize: '10px', width: '100%', padding: '4px 6px', fontFamily: 'Syne, sans-serif', resize: 'vertical', minHeight: '40px', outline: 'none', lineHeight: '1.5' }"
-                  placeholder="Mbappe, 80, pen
-Giroud, 45"
-                  :value="m.result.goalsAwayText"
-                  @input="setMatchGoalText(m.id, 'away', ($event.target as HTMLTextAreaElement).value)"></textarea>
+                <div v-for="c in [...m.result.cardsAway].sort((a,b) => a.minute - b.minute)" :key="c.name + c.minute" style="font-size: 10px; color: #94a3b8; line-height: 1.7">
+                  <span style="color: #64748b">{{ c.minute }}'</span> <span style="font-size: 9px">{{ c.red ? '🟥' : '🟨' }}</span> {{ c.name }}
+                </div>
               </div>
             </div>
-          </template>
+          </div>
         </div>
 
-        <!-- Cartons -->
-        <div v-if="m.result.cardsHome.length || m.result.cardsAway.length" style="margin-top: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
-          <div style="text-align: right">
-            <div v-for="c in [...m.result.cardsHome].sort((a,b) => a.minute - b.minute)" :key="c.name + c.minute" style="font-size: 10px; color: #94a3b8; line-height: 1.6">
-              {{ c.name }} <span style="font-size: 9px">{{ c.red ? '🟥' : '🟨' }}</span> <span style="color: #64748b">{{ c.minute }}'</span>
-            </div>
+        <!-- Édition buteurs (admin) -->
+        <div v-if="canEditResult" style="margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px">
+          <div>
+            <div style="font-size: 9px; color: #64748b; margin-bottom: 2px; text-align: right">← Buteurs dom. (Nom, min [, pen/csc])</div>
+            <textarea
+              :style="{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '4px', color: '#94a3b8', fontSize: '10px', width: '100%', padding: '4px 6px', fontFamily: 'Syne, sans-serif', resize: 'vertical', minHeight: '40px', outline: 'none', lineHeight: '1.5' }"
+              placeholder="Messi, 10, pen
+Alvarez, 39"
+              :value="m.result.goalsHomeText"
+              @input="setMatchGoalText(m.id, 'home', ($event.target as HTMLTextAreaElement).value)"></textarea>
           </div>
           <div>
-            <div v-for="c in [...m.result.cardsAway].sort((a,b) => a.minute - b.minute)" :key="c.name + c.minute" style="font-size: 10px; color: #94a3b8; line-height: 1.6">
-              <span style="color: #64748b">{{ c.minute }}'</span> <span style="font-size: 9px">{{ c.red ? '🟥' : '🟨' }}</span> {{ c.name }}
-            </div>
+            <div style="font-size: 9px; color: #64748b; margin-bottom: 2px">Buteurs ext. → (Nom, min [, pen/csc])</div>
+            <textarea
+              :style="{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '4px', color: '#94a3b8', fontSize: '10px', width: '100%', padding: '4px 6px', fontFamily: 'Syne, sans-serif', resize: 'vertical', minHeight: '40px', outline: 'none', lineHeight: '1.5' }"
+              placeholder="Mbappe, 80, pen
+Giroud, 45"
+              :value="m.result.goalsAwayText"
+              @input="setMatchGoalText(m.id, 'away', ($event.target as HTMLTextAreaElement).value)"></textarea>
           </div>
         </div>
 
