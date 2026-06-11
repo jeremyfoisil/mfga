@@ -15,14 +15,17 @@ const TEAM_ALIAS: Record<string, string> = {
 const norm = (n: string) => TEAM_ALIAS[n] ?? n
 
 interface Goal {
+  id?: number
   name: string
   minute: number
   penalty?: boolean
   owngoal?: boolean
   assist?: string
+  assistId?: number
 }
 
 interface Card {
+  id?: number
   name: string
   minute: number
   red?: boolean
@@ -79,15 +82,18 @@ async function fetchEvents(fixtureId: number, homeTeamId: number): Promise<Event
       const owngoal = e.detail === 'Own Goal'
       const side = owngoal ? !byHome : byHome // own goal counts for the other team
       const g: Goal = {
+        ...(e.player?.id ? { id: e.player.id } : {}),
         name: e.player?.name ?? '',
         minute,
         ...(e.detail === 'Penalty' ? { penalty: true } : {}),
         ...(owngoal ? { owngoal: true } : {}),
         ...(e.assist?.name ? { assist: e.assist.name } : {}),
+        ...(e.assist?.id ? { assistId: e.assist.id } : {}),
       }
       ;(side ? ev.goalsHome : ev.goalsAway).push(g)
     } else if (e.type === 'Card') {
       const c: Card = {
+        ...(e.player?.id ? { id: e.player.id } : {}),
         name: e.player?.name ?? '',
         minute,
         ...(e.detail === 'Yellow Card' ? {} : { red: true }), // Red Card / Second Yellow = red
@@ -99,8 +105,8 @@ async function fetchEvents(fixtureId: number, homeTeamId: number): Promise<Event
 }
 
 // ── Player-stats aggregation ──────────────────────────────────────────
-// Event names are abbreviated ("C. Montes"); the players table holds full
-// names ("César Montes"). Match by accent-insensitive last name + team.
+// Match events to players by API-Football player id (exact). Fallback to
+// accent-insensitive last name + team for manual admin entries without ids.
 const stripAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '')
 function lastKey(name: string): string {
   const parts = name.trim().split(/\s+/)
@@ -114,60 +120,116 @@ interface DbMatchFull {
   goals_home: Goal[] | null; goals_away: Goal[] | null
   cards_home: Card[] | null; cards_away: Card[] | null
 }
-interface PlayerRow { id: number; name: string; team: string }
+interface PlayerRow { id: number; api_id: number | null; name: string; team: string }
+
+// PostgREST caps a select at 1000 rows by default — paginate to load them all.
+// deno-lint-ignore no-explicit-any
+async function fetchAllPlayers(supabase: any): Promise<PlayerRow[]> {
+  const all: PlayerRow[] = []
+  const size = 1000
+  for (let from = 0; ; from += size) {
+    const { data } = await supabase.from('players').select('id, api_id, name, team').order('id').range(from, from + size - 1)
+    if (!data?.length) break
+    all.push(...data)
+    if (data.length < size) break
+  }
+  return all
+}
 
 // deno-lint-ignore no-explicit-any
 async function recomputePlayerStats(supabase: any) {
   const { data: matches } = await supabase
     .from('matches')
     .select('home_team, away_team, goals_home, goals_away, cards_home, cards_away')
-  const { data: players } = await supabase.from('players').select('id, name, team')
-  if (!players) return
+  let players = await fetchAllPlayers(supabase)
 
-  // index: team -> lastKey -> candidates
-  const idx = new Map<string, Map<string, { id: number; initial: string }[]>>()
+  // api_id is a bigint column → supabase-js may return it as a string, so coerce to Number
+  const buildByApiId = (rows: PlayerRow[]) => {
+    const m = new Map<number, number>()
+    for (const p of rows) if (p.api_id != null) m.set(Number(p.api_id), p.id)
+    return m
+  }
+  let byApiId = buildByApiId(players as PlayerRow[])
+
+  // Fallback index for manual admin entries without ids: team -> lastKey -> candidates
+  const byName = new Map<string, Map<string, { id: number; initial: string }[]>>()
   for (const p of players as PlayerRow[]) {
-    if (!idx.has(p.team)) idx.set(p.team, new Map())
-    const m = idx.get(p.team)!
+    if (!byName.has(p.team)) byName.set(p.team, new Map())
+    const m = byName.get(p.team)!
     const k = lastKey(p.name)
     if (!m.has(k)) m.set(k, [])
     m.get(k)!.push({ id: p.id, initial: firstInitial(p.name) })
   }
-  const findPlayer = (team: string, name: string): number | null => {
-    const m = idx.get(team); if (!m) return null
+  const findByName = (team: string, name: string): number | null => {
+    const m = byName.get(team); if (!m) return null
     const cands = m.get(lastKey(name)); if (!cands?.length) return null
     if (cands.length === 1) return cands[0].id
     return (cands.find(c => c.initial === firstInitial(name)) ?? cands[0]).id
   }
 
+  // Pass 1: ensure every event player (with an id) exists in the players table.
+  // API squad lists are sometimes incomplete, so insert any missing participants.
+  const missing = new Map<number, { api_id: number; name: string; team: string; position: string }>()
+  const note = (apiId: number | undefined, name: string, team: string) => {
+    if (apiId && !byApiId.has(apiId) && !missing.has(apiId))
+      missing.set(apiId, { api_id: apiId, name, team, position: 'MID' })
+  }
+  for (const mt of (matches ?? []) as DbMatchFull[]) {
+    for (const s of [
+      { team: mt.home_team, goals: mt.goals_home, cards: mt.cards_home },
+      { team: mt.away_team, goals: mt.goals_away, cards: mt.cards_away },
+    ]) {
+      for (const g of s.goals ?? []) { note(g.id, g.name, s.team); if (g.assist) note(g.assistId, g.assist, s.team) }
+      for (const c of s.cards ?? []) note(c.id, c.name, s.team)
+    }
+  }
+  if (missing.size) {
+    // upsert on api_id so re-runs never create duplicates
+    await supabase.from('players').upsert([...missing.values()], { onConflict: 'api_id', ignoreDuplicates: true })
+    players = await fetchAllPlayers(supabase)
+    byApiId = buildByApiId(players)
+    for (const p of players) {
+      if (!byName.has(p.team)) byName.set(p.team, new Map())
+      const m = byName.get(p.team)!
+      const k = lastKey(p.name)
+      if (!m.has(k)) m.set(k, [])
+      if (!m.get(k)!.some(c => c.id === p.id)) m.get(k)!.push({ id: p.id, initial: firstInitial(p.name) })
+    }
+  }
+
+  const findPlayer = (team: string, name: string, apiId?: number): number | null =>
+    (apiId && byApiId.get(apiId)) || findByName(team, name)
+
+  // Pass 2: tally
   type Tally = { goals: number; assists: number; yellow: number; red: number }
   const tally = new Map<number, Tally>()
   const bump = (id: number, field: keyof Tally) => {
     let t = tally.get(id); if (!t) { t = { goals: 0, assists: 0, yellow: 0, red: 0 }; tally.set(id, t) }
     t[field]++
   }
-
   for (const mt of (matches ?? []) as DbMatchFull[]) {
-    const sides = [
+    for (const s of [
       { team: mt.home_team, goals: mt.goals_home, cards: mt.cards_home },
       { team: mt.away_team, goals: mt.goals_away, cards: mt.cards_away },
-    ]
-    for (const s of sides) {
+    ]) {
       for (const g of s.goals ?? []) {
-        if (!g.owngoal && g.name) { const id = findPlayer(s.team, g.name); if (id) bump(id, 'goals') }
-        if (g.assist) { const id = findPlayer(s.team, g.assist); if (id) bump(id, 'assists') }
+        if (!g.owngoal && g.name) { const id = findPlayer(s.team, g.name, g.id); if (id) bump(id, 'goals') }
+        if (g.assist) { const id = findPlayer(s.team, g.assist, g.assistId); if (id) bump(id, 'assists') }
       }
       for (const c of s.cards ?? []) {
         if (!c.name) continue
-        const id = findPlayer(s.team, c.name); if (id) bump(id, c.red ? 'red' : 'yellow')
+        const id = findPlayer(s.team, c.name, c.id); if (id) bump(id, c.red ? 'red' : 'yellow')
       }
     }
   }
 
-  // reset everyone, then write the tallied players
-  await supabase.from('players').update({ goals: 0, assists: 0, yellow: 0, red: 0 }).gt('id', 0)
-  await Promise.all([...tally.entries()].map(([id, s]) =>
-    supabase.from('players').update(s).eq('id', id)))
+  // Write every player's stats in bulk upserts (one request per chunk).
+  // Concurrent single-row updates get dropped in the edge runtime, so avoid them.
+  const zero = { goals: 0, assists: 0, yellow: 0, red: 0 }
+  const updates = players.map(p => ({ id: p.id, ...(tally.get(p.id) ?? zero) }))
+  for (let i = 0; i < updates.length; i += 500) {
+    await supabase.from('players').upsert(updates.slice(i, i + 500), { onConflict: 'id' })
+  }
 }
 
 Deno.serve(async () => {

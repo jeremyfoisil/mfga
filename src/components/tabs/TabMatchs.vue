@@ -98,11 +98,15 @@ function activeParticipantColor() {
 }
 
 const groupMatches = computed(() =>
-  matchesStore.matches.filter(m => m.stage === 'group' && m.group === activeGroup.value)
+  matchesStore.matches
+    .filter(m => m.stage === 'group' && m.group === activeGroup.value)
+    .sort((a, b) => matchStartsAtMs(a) - matchStartsAtMs(b))
 )
 
 const koStageMatches = computed(() =>
-  matchesStore.matches.filter(m => m.stage === activeKOStage.value)
+  matchesStore.matches
+    .filter(m => m.stage === activeKOStage.value)
+    .sort((a, b) => matchStartsAtMs(a) - matchStartsAtMs(b))
 )
 
 const hasKOMatches = computed(() => matchesStore.matches.some(m => m.stage !== 'group'))

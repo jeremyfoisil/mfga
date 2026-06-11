@@ -35,32 +35,48 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   )
 
-  const players: { name: string; team: string; position: string }[] = []
-  let fetched = 0, failed = 0
+  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
-  for (const [team, id] of Object.entries(TEAM_ID)) {
-    try {
-      const res = await fetch(`https://${API_HOST}/players/squads?team=${id}`, {
-        headers: { 'x-apisports-key': APISPORTS_KEY },
-      })
-      if (!res.ok) { failed++; continue }
-      const { response } = await res.json() as {
-        response: { players: { name: string; position: string }[] }[]
-      }
-      const squad = response?.[0]?.players ?? []
-      for (const p of squad) {
-        players.push({ name: p.name, team, position: SQUAD_POS[p.position] ?? 'MID' })
-      }
-      fetched++
-    } catch { failed++ }
+  // /players/squads occasionally returns an empty array; retry a few times.
+  async function fetchSquad(id: number): Promise<{ id: number; name: string; position: string }[]> {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        const res = await fetch(`https://${API_HOST}/players/squads?team=${id}`, {
+          headers: { 'x-apisports-key': APISPORTS_KEY },
+        })
+        if (res.ok) {
+          const { response } = await res.json() as {
+            response: { players: { id: number; name: string; position: string }[] }[]
+          }
+          const squad = response?.[0]?.players ?? []
+          if (squad.length) return squad
+        }
+      } catch { /* retry */ }
+      await sleep(400)
+    }
+    return []
   }
 
-  if (!players.length) return json({ error: 'No players fetched', fetched, failed }, 500)
+  const players: { api_id: number; name: string; team: string; position: string }[] = []
+  const emptyTeams: string[] = []
+
+  for (const [team, id] of Object.entries(TEAM_ID)) {
+    const squad = await fetchSquad(id)
+    if (!squad.length) { emptyTeams.push(team); continue }
+    for (const p of squad) {
+      players.push({ api_id: p.id, name: p.name, team, position: SQUAD_POS[p.position] ?? 'MID' })
+    }
+  }
+
+  // Abort without wiping if the data is clearly incomplete
+  if (emptyTeams.length > 3) {
+    return json({ error: 'Too many empty squads, aborting to avoid data loss', emptyTeams }, 502)
+  }
 
   // Truncate and re-insert
   await supabase.from('players').delete().neq('id', 0)
   const { error: insertErr } = await supabase.from('players').insert(players)
   if (insertErr) return json({ error: insertErr.message }, 500)
 
-  return json({ inserted: players.length, teams: fetched, failed })
+  return json({ inserted: players.length, teams: 48 - emptyTeams.length, emptyTeams })
 })
