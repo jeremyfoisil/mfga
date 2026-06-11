@@ -19,6 +19,13 @@ interface Goal {
   minute: number
   penalty?: boolean
   owngoal?: boolean
+  assist?: string
+}
+
+interface Card {
+  name: string
+  minute: number
+  red?: boolean
 }
 
 interface ApiFixture {
@@ -31,6 +38,7 @@ interface ApiEvent {
   time: { elapsed: number | null; extra: number | null }
   team: { id: number; name: string }
   player: { id: number | null; name: string | null }
+  assist: { id: number | null; name: string | null }
   type: string
   detail: string
 }
@@ -49,31 +57,45 @@ const apiFetch = (path: string) =>
     headers: { 'x-apisports-key': APISPORTS_KEY },
   })
 
-// Build goal lists for both sides from a fixture's events.
+interface Events {
+  goalsHome: Goal[]; goalsAway: Goal[]
+  cardsHome: Card[]; cardsAway: Card[]
+}
+
+// Build goal + card lists for both sides from a fixture's events.
 // Own goals are credited to the opposing (beneficiary) side.
-async function fetchGoals(fixtureId: number, homeTeamId: number): Promise<{ home: Goal[]; away: Goal[] } | null> {
+async function fetchEvents(fixtureId: number, homeTeamId: number): Promise<Events | null> {
   const res = await apiFetch(`fixtures/events?fixture=${fixtureId}`)
   if (!res.ok) return null
   const { response }: { response: ApiEvent[] } = await res.json()
   if (!Array.isArray(response)) return null
 
-  const home: Goal[] = []
-  const away: Goal[] = []
+  const ev: Events = { goalsHome: [], goalsAway: [], cardsHome: [], cardsAway: [] }
   for (const e of response) {
-    if (e.type !== 'Goal' || e.detail === 'Missed Penalty') continue
-    const owngoal = e.detail === 'Own Goal'
-    const scoredByHome = e.team.id === homeTeamId
-    // own goal counts for the other team
-    const side = owngoal ? !scoredByHome : scoredByHome
-    const g: Goal = {
-      name: e.player?.name ?? '',
-      minute: (e.time?.elapsed ?? 0) + (e.time?.extra ?? 0),
-      ...(e.detail === 'Penalty' ? { penalty: true } : {}),
-      ...(owngoal ? { owngoal: true } : {}),
+    const byHome = e.team.id === homeTeamId
+    const minute = (e.time?.elapsed ?? 0) + (e.time?.extra ?? 0)
+
+    if (e.type === 'Goal' && e.detail !== 'Missed Penalty') {
+      const owngoal = e.detail === 'Own Goal'
+      const side = owngoal ? !byHome : byHome // own goal counts for the other team
+      const g: Goal = {
+        name: e.player?.name ?? '',
+        minute,
+        ...(e.detail === 'Penalty' ? { penalty: true } : {}),
+        ...(owngoal ? { owngoal: true } : {}),
+        ...(e.assist?.name ? { assist: e.assist.name } : {}),
+      }
+      ;(side ? ev.goalsHome : ev.goalsAway).push(g)
+    } else if (e.type === 'Card') {
+      const c: Card = {
+        name: e.player?.name ?? '',
+        minute,
+        ...(e.detail === 'Yellow Card' ? {} : { red: true }), // Red Card / Second Yellow = red
+      }
+      ;(byHome ? ev.cardsHome : ev.cardsAway).push(c)
     }
-    ;(side ? home : away).push(g)
   }
-  return { home, away }
+  return ev
 }
 
 Deno.serve(async () => {
@@ -103,7 +125,7 @@ Deno.serve(async () => {
   // to detect orientation, and goals_home to know if a finished match is backfilled.
   const { data: dbMatches, error: dbErr } = await supabase
     .from('matches')
-    .select('id, home_team, away_team, goals_home, live_status')
+    .select('id, home_team, away_team, goals_home, cards_home, live_status')
   if (dbErr) {
     return new Response(JSON.stringify({ error: dbErr.message }), {
       status: 500, headers: { 'Content-Type': 'application/json' },
@@ -126,17 +148,19 @@ Deno.serve(async () => {
     if (fx.goals.home !== null && fx.goals.away !== null) {
       upsert.result_home = flipped ? fx.goals.away : fx.goals.home
       upsert.result_away = flipped ? fx.goals.home : fx.goals.away
+    }
 
-      // Fetch scorer events when live, or to backfill a freshly finished match
-      const hasGoalsStored = Array.isArray(db.goals_home) && db.goals_home.length > 0
-      const needGoals = status === 'live' || (status === 'finished' && !hasGoalsStored)
-      const anyGoals = (fx.goals.home + fx.goals.away) > 0
-      if (needGoals && anyGoals) {
-        const g = await fetchGoals(fx.fixture.id, fx.teams.home.id)
-        if (g) {
-          upsert.goals_home = flipped ? g.away : g.home
-          upsert.goals_away = flipped ? g.home : g.away
-        }
+    // Fetch events (goals + cards) when live, or to backfill a match not yet detailed
+    const hasGoals = Array.isArray(db.goals_home) && db.goals_home.length > 0
+    const hasCards = Array.isArray(db.cards_home) && db.cards_home.length > 0
+    const needEvents = status === 'live' || (status === 'finished' && !hasGoals && !hasCards)
+    if (needEvents) {
+      const ev = await fetchEvents(fx.fixture.id, fx.teams.home.id)
+      if (ev) {
+        upsert.goals_home = flipped ? ev.goalsAway : ev.goalsHome
+        upsert.goals_away = flipped ? ev.goalsHome : ev.goalsAway
+        upsert.cards_home = flipped ? ev.cardsAway : ev.cardsHome
+        upsert.cards_away = flipped ? ev.cardsHome : ev.cardsAway
       }
     }
 

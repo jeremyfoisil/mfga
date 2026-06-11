@@ -9,12 +9,14 @@ import { BONUS_TYPES, BONUS_ICONS } from '../../constants/bonus'
 import { ALL_TEAMS } from '../../constants/teams'
 import { initials } from '../../utils/ui'
 import PlayerSearch from '../ui/PlayerSearch.vue'
-import { sb } from '../../supabase'
+import { useMatchesStore } from '../../stores/matches'
+import { computeMatchStats } from '../../utils/stats'
 
 const parts      = useParticipantsStore()
 const bonusStore = useBonusStore()
 const admin      = useAdminStore()
 const auth       = useAuthStore()
+const matchesStore = useMatchesStore()
 
 const myParticipantId    = computed(() => auth.profile?.participant_id ?? null)
 const bonusLocked        = computed(() => new Date() >= BONUS_LOCK_DATE)
@@ -24,33 +26,22 @@ const syncMsg            = ref('')
 
 function isMe(pid: number) { return pid === myParticipantId.value }
 
-async function syncResultsFromStats() {
+function syncResultsFromStats() {
   syncingStats.value = true
   syncMsg.value = ''
   try {
-    const { data, error } = await sb.functions.invoke('stats-proxy')
-    if (error) throw error
-    const scorers: Array<Record<string, unknown>> = data?.data ?? []
+    const stats = computeMatchStats(matchesStore.matches)
+    if (!stats.length) { syncMsg.value = '❌ Aucune statistique disponible pour le moment'; return }
 
-    function val(s: Record<string, unknown>, field: string) { return (s[field] as number) ?? 0 }
+    const topScorer = [...stats].sort((a, b) => b.goals   - a.goals)[0]
+    const topAssist = [...stats].sort((a, b) => b.assists - a.assists)[0]
+    // découpeur = barème cartons (jaune ×1, rouge ×2)
+    const foul = (s: typeof stats[number]) => s.yellow + s.red * 2
+    const topFouler = [...stats].sort((a, b) => foul(b) - foul(a))[0]
 
-    const topScorer = [...scorers]
-      .sort((a, b) => (val(b,'goals') || val(b,'scored')) - (val(a,'goals') || val(a,'scored')))
-      [0]
-    const topAssist = [...scorers]
-      .sort((a, b) => val(b,'assists') - val(a,'assists'))
-      [0]
-    const topFouler = [...scorers]
-      .sort((a, b) => {
-        const scoreB = (val(b,'yellow_cards') || val(b,'yellowCards') || val(b,'yellow')) + (val(b,'red_cards') || val(b,'redCards') || val(b,'red')) * 2
-        const scoreA = (val(a,'yellow_cards') || val(a,'yellowCards') || val(a,'yellow')) + (val(a,'red_cards') || val(a,'redCards') || val(a,'red')) * 2
-        return scoreB - scoreA
-      })
-      [0]
-
-    if (topScorer?.player) bonusStore.setBonusResult('topscorer', 0, topScorer.player as string)
-    if (topAssist?.player) bonusStore.setBonusResult('topassist', 0, topAssist.player as string)
-    if (topFouler?.player) bonusStore.setBonusResult('topfouler', 0, topFouler.player as string)
+    if (topScorer?.goals   > 0) bonusStore.setBonusResult('topscorer', 0, topScorer.player)
+    if (topAssist?.assists > 0) bonusStore.setBonusResult('topassist', 0, topAssist.player)
+    if (topFouler && foul(topFouler) > 0) bonusStore.setBonusResult('topfouler', 0, topFouler.player)
 
     syncMsg.value = '✅ Résultats synchronisés depuis les stats'
   } catch (e) {

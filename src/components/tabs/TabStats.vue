@@ -1,48 +1,24 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { sb } from '../../supabase'
+import { computed } from 'vue'
 import { C, sCard } from '../../constants/ui'
 import { getFlag } from '../../utils/ui'
+import { useMatchesStore } from '../../stores/matches'
+import { computeMatchStats, type StatRow } from '../../utils/stats'
 
-interface Scorer {
-  player:       string
-  team:         string
-  goals?:       number
-  scored?:      number
-  assists?:     number
-  yellow_cards?: number
-  yellowCards?: number
-  yellow?:      number
-  red_cards?:   number
-  redCards?:    number
-  red?:         number
-}
+const matchesStore = useMatchesStore()
 
-const loading = ref(true)
-const error   = ref<string | null>(null)
-const raw     = ref<Scorer[]>([])
+const raw = computed(() => computeMatchStats(matchesStore.matches))
+const anyData = computed(() => raw.value.length > 0)
 
-onMounted(async () => {
-  try {
-    const { data, error: err } = await sb.functions.invoke('stats-proxy')
-    if (err) throw err
-    raw.value = (data?.data ?? []) as Scorer[]
-  } catch (e) {
-    error.value = (e as Error).message
-  } finally {
-    loading.value = false
-  }
-})
+const goals   = (s: StatRow) => s.goals
+const assists = (s: StatRow) => s.assists
+const yellows = (s: StatRow) => s.yellow
+const reds    = (s: StatRow) => s.red
 
-function goals(s: Scorer)   { return s.goals ?? s.scored ?? 0 }
-function assists(s: Scorer) { return s.assists ?? 0 }
-function yellows(s: Scorer) { return s.yellow_cards ?? s.yellowCards ?? s.yellow ?? 0 }
-function reds(s: Scorer)    { return s.red_cards ?? s.redCards ?? s.red ?? 0 }
-
-const topScorers  = computed(() => [...raw.value].filter(s => goals(s) > 0)  .sort((a,b) => goals(b)   - goals(a))  .slice(0, 15))
-const topAssists  = computed(() => [...raw.value].filter(s => assists(s) > 0).sort((a,b) => assists(b) - assists(a)).slice(0, 10))
-const topYellows  = computed(() => [...raw.value].filter(s => yellows(s) > 0).sort((a,b) => yellows(b) - yellows(a)).slice(0, 10))
-const topReds     = computed(() => [...raw.value].filter(s => reds(s) > 0)   .sort((a,b) => reds(b)    - reds(a))   .slice(0, 10))
+const topScorers = computed(() => raw.value.filter(s => s.goals > 0)  .sort((a,b) => b.goals   - a.goals)  .slice(0, 15))
+const topAssists = computed(() => raw.value.filter(s => s.assists > 0).sort((a,b) => b.assists - a.assists).slice(0, 10))
+const topYellows = computed(() => raw.value.filter(s => s.yellow > 0) .sort((a,b) => b.yellow  - a.yellow) .slice(0, 10))
+const topReds    = computed(() => raw.value.filter(s => s.red > 0)    .sort((a,b) => b.red     - a.red)    .slice(0, 10))
 
 const sections = computed(() => [
   { key: 'goals',   label: 'Buteurs',            icon: '⚽', color: '#22c55e', list: topScorers.value,  val: goals   },
@@ -54,19 +30,8 @@ const sections = computed(() => [
 
 <template>
   <div>
-    <!-- Loading -->
-    <div v-if="loading" style="display: flex; flex-direction: column; align-items: center; padding: 60px 0; gap: 14px">
-      <div class="stats-spinner"></div>
-      <div style="font-family: Anton, sans-serif; font-size: 12px; color: #64748b; letter-spacing: 1px">CHARGEMENT…</div>
-    </div>
-
-    <!-- Error -->
-    <div v-else-if="error" :style="{ ...sCard, textAlign: 'center', padding: '32px', color: '#ef4444' }">
-      {{ error }}
-    </div>
-
     <!-- Empty -->
-    <div v-else-if="raw.length === 0" :style="{ ...sCard, textAlign: 'center', padding: '40px 20px' }">
+    <div v-if="!anyData" :style="{ ...sCard, textAlign: 'center', padding: '40px 20px' }">
       <div style="font-size: 40px; margin-bottom: 12px">📊</div>
       <div style="font-family: Anton, sans-serif; font-size: 14px; color: #475569; letter-spacing: 1px; margin-bottom: 8px">PAS ENCORE DE DONNÉES</div>
       <div style="font-size: 12px; color: #334155">Les statistiques seront disponibles dès le coup d'envoi du premier match.</div>

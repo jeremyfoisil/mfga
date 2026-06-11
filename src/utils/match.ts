@@ -14,6 +14,8 @@ export function calcMatchPoints(prono: Prono | undefined, result: MatchResult): 
 export function mapMatchRow(r: Record<string, unknown>): Match {
   const gh = (r.goals_home as import('../types').Goal[] | null) || []
   const ga = (r.goals_away as import('../types').Goal[] | null) || []
+  const ch = (r.cards_home as import('../types').Card[] | null) || []
+  const ca = (r.cards_away as import('../types').Card[] | null) || []
   return {
     id:        r.id as number,
     stage:     (r.stage as string) || "group",
@@ -31,6 +33,8 @@ export function mapMatchRow(r: Record<string, unknown>): Match {
       goalsAway: ga,
       goalsHomeText: goalsToText(gh),
       goalsAwayText: goalsToText(ga),
+      cardsHome: ch,
+      cardsAway: ca,
     },
     matchDate: (r.match_date as string) || "",
     matchTime: (r.match_time as string) || "",

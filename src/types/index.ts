@@ -3,6 +3,13 @@ export interface Goal {
   minute: number
   penalty?: boolean
   owngoal?: boolean
+  assist?: string
+}
+
+export interface Card {
+  name: string
+  minute: number
+  red?: boolean
 }
 
 export interface MatchResult {
@@ -12,6 +19,8 @@ export interface MatchResult {
   goalsAway: Goal[]
   goalsHomeText: string
   goalsAwayText: string
+  cardsHome: Card[]
+  cardsAway: Card[]
 }
 
 export interface Match {

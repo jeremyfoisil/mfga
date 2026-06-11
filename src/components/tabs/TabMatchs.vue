@@ -363,6 +363,20 @@ function toggleJoker(pid: number | null, matchId: number) {
           </template>
         </div>
 
+        <!-- Cartons KO -->
+        <div v-if="m.result.cardsHome.length || m.result.cardsAway.length" style="margin-top: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
+          <div style="text-align: right">
+            <div v-for="c in [...m.result.cardsHome].sort((a,b) => a.minute - b.minute)" :key="c.name + c.minute" style="font-size: 10px; color: #94a3b8; line-height: 1.6">
+              {{ c.name }} <span style="font-size: 9px">{{ c.red ? '🟥' : '🟨' }}</span> <span style="color: #64748b">{{ c.minute }}'</span>
+            </div>
+          </div>
+          <div>
+            <div v-for="c in [...m.result.cardsAway].sort((a,b) => a.minute - b.minute)" :key="c.name + c.minute" style="font-size: 10px; color: #94a3b8; line-height: 1.6">
+              <span style="color: #64748b">{{ c.minute }}'</span> <span style="font-size: 9px">{{ c.red ? '🟥' : '🟨' }}</span> {{ c.name }}
+            </div>
+          </div>
+        </div>
+
         <!-- Footer KO -->
         <div v-if="m.homeKnown && m.awayKnown" :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed ' + C.border }">
           <button v-if="canEditMatchProno(m.id)"
@@ -520,6 +534,20 @@ Giroud, 45"
               </div>
             </div>
           </template>
+        </div>
+
+        <!-- Cartons -->
+        <div v-if="m.result.cardsHome.length || m.result.cardsAway.length" style="margin-top: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
+          <div style="text-align: right">
+            <div v-for="c in [...m.result.cardsHome].sort((a,b) => a.minute - b.minute)" :key="c.name + c.minute" style="font-size: 10px; color: #94a3b8; line-height: 1.6">
+              {{ c.name }} <span style="font-size: 9px">{{ c.red ? '🟥' : '🟨' }}</span> <span style="color: #64748b">{{ c.minute }}'</span>
+            </div>
+          </div>
+          <div>
+            <div v-for="c in [...m.result.cardsAway].sort((a,b) => a.minute - b.minute)" :key="c.name + c.minute" style="font-size: 10px; color: #94a3b8; line-height: 1.6">
+              <span style="color: #64748b">{{ c.minute }}'</span> <span style="font-size: 9px">{{ c.red ? '🟥' : '🟨' }}</span> {{ c.name }}
+            </div>
+          </div>
         </div>
 
         <!-- Footer: joker + result pts -->
