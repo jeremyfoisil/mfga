@@ -6,14 +6,22 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const RAPIDAPI_KEY  = Deno.env.get('RAPIDAPI_KEY') ?? '4f5231439dmshc22c83b5cde5ef3p1d9c86jsn739feb141fa8'
-const RAPIDAPI_HOST = 'wc26-live-football-api.p.rapidapi.com'
+const APISPORTS_KEY = Deno.env.get('APISPORTS_KEY') ?? '872ee48ce93458599691cffe5e72ed01'
+const API_HOST = 'v3.football.api-sports.io'
 
-const HEADERS = { 'x-rapidapi-host': RAPIDAPI_HOST, 'x-rapidapi-key': RAPIDAPI_KEY }
+// DB team name -> API-Football team id
+const TEAM_ID: Record<string, number> = {
+  "Algeria":1532,"Argentina":26,"Australia":20,"Austria":775,"Belgium":1,"Bosnia & Herzegovina":1113,
+  "Brazil":6,"Canada":5529,"Cape Verde":1533,"Colombia":8,"Croatia":3,"Curaçao":5530,"Czech Republic":770,
+  "DR Congo":1508,"Ecuador":2382,"Egypt":32,"England":10,"France":2,"Germany":25,"Ghana":1504,"Haiti":2386,
+  "Iran":22,"Iraq":1567,"Ivory Coast":1501,"Japan":12,"Jordan":1548,"Mexico":16,"Morocco":31,"Netherlands":1118,
+  "New Zealand":4673,"Norway":1090,"Panama":11,"Paraguay":2380,"Portugal":27,"Qatar":1569,"Saudi Arabia":23,
+  "Scotland":1108,"Senegal":13,"South Africa":1531,"South Korea":17,"Spain":9,"Sweden":5,"Switzerland":15,
+  "Tunisia":28,"Turkey":777,"USA":2384,"Uruguay":7,"Uzbekistan":1568,
+}
 
-type RawPos = 'Goalkeeper' | 'Defender' | 'Midfielder' | 'Forward'
-const POS_MAP: Record<RawPos, string> = {
-  Goalkeeper: 'GK', Defender: 'DEF', Midfielder: 'MID', Forward: 'FWD',
+const SQUAD_POS: Record<string, string> = {
+  Goalkeeper: 'GK', Defender: 'DEF', Midfielder: 'MID', Attacker: 'FWD',
 }
 
 Deno.serve(async (req) => {
@@ -27,32 +35,21 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   )
 
-  // Get all unique teams from matches table
-  const { data: matches, error: matchErr } = await supabase
-    .from('matches')
-    .select('home_team, away_team')
-  if (matchErr) return json({ error: matchErr.message }, 500)
-
-  const teams = new Set<string>()
-  for (const m of matches ?? []) {
-    if (m.home_team) teams.add(m.home_team)
-    if (m.away_team) teams.add(m.away_team)
-  }
-
-  // Fetch squad for each team
   const players: { name: string; team: string; position: string }[] = []
   let fetched = 0, failed = 0
 
-  for (const team of teams) {
+  for (const [team, id] of Object.entries(TEAM_ID)) {
     try {
-      const res = await fetch(
-        `https://${RAPIDAPI_HOST}/squad/${encodeURIComponent(team)}`,
-        { headers: HEADERS },
-      )
+      const res = await fetch(`https://${API_HOST}/players/squads?team=${id}`, {
+        headers: { 'x-apisports-key': APISPORTS_KEY },
+      })
       if (!res.ok) { failed++; continue }
-      const { data } = await res.json() as { data: { name: string; position: RawPos }[] }
-      for (const p of data ?? []) {
-        players.push({ name: p.name, team, position: POS_MAP[p.position] ?? p.position })
+      const { response } = await res.json() as {
+        response: { players: { name: string; position: string }[] }[]
+      }
+      const squad = response?.[0]?.players ?? []
+      for (const p of squad) {
+        players.push({ name: p.name, team, position: SQUAD_POS[p.position] ?? 'MID' })
       }
       fetched++
     } catch { failed++ }
