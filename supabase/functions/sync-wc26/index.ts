@@ -98,6 +98,78 @@ async function fetchEvents(fixtureId: number, homeTeamId: number): Promise<Event
   return ev
 }
 
+// ── Player-stats aggregation ──────────────────────────────────────────
+// Event names are abbreviated ("C. Montes"); the players table holds full
+// names ("César Montes"). Match by accent-insensitive last name + team.
+const stripAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '')
+function lastKey(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  const last = parts.length === 1 ? parts[0] : parts.slice(1).join(' ')
+  return stripAccents(last.toLowerCase())
+}
+const firstInitial = (name: string) => stripAccents((name.trim()[0] ?? '').toLowerCase())
+
+interface DbMatchFull {
+  home_team: string; away_team: string
+  goals_home: Goal[] | null; goals_away: Goal[] | null
+  cards_home: Card[] | null; cards_away: Card[] | null
+}
+interface PlayerRow { id: number; name: string; team: string }
+
+// deno-lint-ignore no-explicit-any
+async function recomputePlayerStats(supabase: any) {
+  const { data: matches } = await supabase
+    .from('matches')
+    .select('home_team, away_team, goals_home, goals_away, cards_home, cards_away')
+  const { data: players } = await supabase.from('players').select('id, name, team')
+  if (!players) return
+
+  // index: team -> lastKey -> candidates
+  const idx = new Map<string, Map<string, { id: number; initial: string }[]>>()
+  for (const p of players as PlayerRow[]) {
+    if (!idx.has(p.team)) idx.set(p.team, new Map())
+    const m = idx.get(p.team)!
+    const k = lastKey(p.name)
+    if (!m.has(k)) m.set(k, [])
+    m.get(k)!.push({ id: p.id, initial: firstInitial(p.name) })
+  }
+  const findPlayer = (team: string, name: string): number | null => {
+    const m = idx.get(team); if (!m) return null
+    const cands = m.get(lastKey(name)); if (!cands?.length) return null
+    if (cands.length === 1) return cands[0].id
+    return (cands.find(c => c.initial === firstInitial(name)) ?? cands[0]).id
+  }
+
+  type Tally = { goals: number; assists: number; yellow: number; red: number }
+  const tally = new Map<number, Tally>()
+  const bump = (id: number, field: keyof Tally) => {
+    let t = tally.get(id); if (!t) { t = { goals: 0, assists: 0, yellow: 0, red: 0 }; tally.set(id, t) }
+    t[field]++
+  }
+
+  for (const mt of (matches ?? []) as DbMatchFull[]) {
+    const sides = [
+      { team: mt.home_team, goals: mt.goals_home, cards: mt.cards_home },
+      { team: mt.away_team, goals: mt.goals_away, cards: mt.cards_away },
+    ]
+    for (const s of sides) {
+      for (const g of s.goals ?? []) {
+        if (!g.owngoal && g.name) { const id = findPlayer(s.team, g.name); if (id) bump(id, 'goals') }
+        if (g.assist) { const id = findPlayer(s.team, g.assist); if (id) bump(id, 'assists') }
+      }
+      for (const c of s.cards ?? []) {
+        if (!c.name) continue
+        const id = findPlayer(s.team, c.name); if (id) bump(id, c.red ? 'red' : 'yellow')
+      }
+    }
+  }
+
+  // reset everyone, then write the tallied players
+  await supabase.from('players').update({ goals: 0, assists: 0, yellow: 0, red: 0 }).gt('id', 0)
+  await Promise.all([...tally.entries()].map(([id, s]) =>
+    supabase.from('players').update(s).eq('id', id)))
+}
+
 Deno.serve(async () => {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -134,6 +206,7 @@ Deno.serve(async () => {
   const byId = new Map((dbMatches ?? []).map(m => [Number(m.id), m]))
 
   const upserts: Record<string, unknown>[] = []
+  let eventsChanged = false
 
   for (const fx of fixtures) {
     const db = byId.get(fx.fixture.id)
@@ -161,6 +234,7 @@ Deno.serve(async () => {
         upsert.goals_away = flipped ? ev.goalsHome : ev.goalsAway
         upsert.cards_home = flipped ? ev.cardsAway : ev.cardsHome
         upsert.cards_away = flipped ? ev.cardsHome : ev.cardsAway
+        eventsChanged = true
       }
     }
 
@@ -182,7 +256,10 @@ Deno.serve(async () => {
     })
   }
 
-  return new Response(JSON.stringify({ synced: upserts.length }), {
+  // Recompute aggregated player stats only when match events actually changed
+  if (eventsChanged) await recomputePlayerStats(supabase)
+
+  return new Response(JSON.stringify({ synced: upserts.length, eventsChanged }), {
     headers: { 'Content-Type': 'application/json' },
   })
 })
