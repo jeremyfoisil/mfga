@@ -6,7 +6,7 @@ import { usePronosticsStore } from '../../stores/pronostics'
 import { useAdminStore } from '../../stores/admin'
 import { useAuthStore } from '../../stores/auth'
 import { C, sCard, sInput, sLabel, KO_STAGES, GROUP_IDS } from '../../constants/ui'
-import { calcMatchPoints, matchStartsAtMs, formatDate } from '../../utils/match'
+import { calcMatchPoints, matchStartsAtMs, formatDate, formatMatchTime } from '../../utils/match'
 import { getFlag, getFlagBg, initials } from '../../utils/ui'
 import LineupModal, { type LineupData } from '../modals/LineupModal.vue'
 import { sb } from '../../supabase'
@@ -212,16 +212,24 @@ function toggleJoker(pid: number | null, matchId: number) {
       </div>
     </div>
 
-    <!-- Admin sync button -->
-    <div v-if="admin.isAdmin" style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px">
+    <!-- Admin sync buttons -->
+    <div v-if="admin.isAdmin" style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px">
       <button
         :disabled="admin.syncLoading"
         :style="{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: 'linear-gradient(135deg, #0f172a, #1e293b)', border: '1px solid rgba(34,197,94,0.4)', borderRadius: '8px', cursor: admin.syncLoading ? 'not-allowed' : 'pointer', fontFamily: 'Anton, sans-serif', fontSize: '11px', letterSpacing: '1px', color: '#22c55e', opacity: admin.syncLoading ? 0.6 : 1 }"
         @click="admin.syncFromApi()">
         <span>{{ admin.syncLoading ? '⏳' : '🔄' }}</span>
-        {{ admin.syncLoading ? 'SYNC…' : 'SYNC API' }}
+        {{ admin.syncLoading ? 'SYNC…' : 'SYNC SCORES' }}
+      </button>
+      <button
+        :disabled="admin.scheduleLoading"
+        :style="{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: 'linear-gradient(135deg, #0f172a, #1e293b)', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '8px', cursor: admin.scheduleLoading ? 'not-allowed' : 'pointer', fontFamily: 'Anton, sans-serif', fontSize: '11px', letterSpacing: '1px', color: '#60a5fa', opacity: admin.scheduleLoading ? 0.6 : 1 }"
+        @click="admin.syncSchedule()">
+        <span>{{ admin.scheduleLoading ? '⏳' : '📅' }}</span>
+        {{ admin.scheduleLoading ? 'SYNC…' : 'SYNC HORAIRES' }}
       </button>
       <span v-if="admin.syncMsg" style="font-size: 11px; color: #22c55e">{{ admin.syncMsg }}</span>
+      <span v-if="admin.scheduleMsg" style="font-size: 11px; color: #60a5fa">{{ admin.scheduleMsg }}</span>
     </div>
 
     <!-- KO : aucun match disponible -->
@@ -244,7 +252,7 @@ function toggleJoker(pid: number | null, matchId: number) {
           <template v-if="m.matchDate">
             <span :style="{ color: C.muted, fontSize: '10px' }">·</span>
             <span :style="{ color: '#94a3b8', fontSize: '10px' }">📅 {{ formatDate(m.matchDate) }}</span>
-            <span v-if="m.matchTime" :style="{ color: '#64748b', fontSize: '10px' }">{{ m.matchTime }}</span>
+            <span v-if="m.matchTime" :style="{ color: '#64748b', fontSize: '10px' }">{{ formatMatchTime(m) }}</span>
           </template>
         </div>
         <div style="display: flex; align-items: center; gap: 8px">
@@ -393,7 +401,7 @@ function toggleJoker(pid: number | null, matchId: number) {
           <template v-if="m.matchDate">
             <span :style="{ color: C.muted, fontSize: '10px' }">·</span>
             <span :style="{ color: '#94a3b8', fontSize: '10px' }">📅 {{ formatDate(m.matchDate) }}</span>
-            <span v-if="m.matchTime" :style="{ color: '#64748b', fontSize: '10px' }">{{ m.matchTime }}</span>
+            <span v-if="m.matchTime" :style="{ color: '#64748b', fontSize: '10px' }">{{ formatMatchTime(m) }}</span>
           </template>
         </div>
         <div style="display: flex; align-items: center; gap: 8px">

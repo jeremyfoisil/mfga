@@ -37,7 +37,9 @@ export const useAdminStore = defineStore('admin', () => {
       const mapG = (gs: { name: string; minute: number; penalty?: boolean; owngoal?: boolean }[] | undefined) =>
         (gs || []).map(g => ({ name: g.name, minute: g.minute, ...(g.penalty ? { penalty: true } : {}), ...(g.owngoal ? { owngoal: true } : {}) }))
       for (const jm of data.matches) {
-        const row: Record<string, unknown> = { match_date: jm.date || null, match_time: jm.time || null, venue: jm.ground || null, round: jm.round || null }
+        const rawTime: string | null = jm.time || null
+      const match_time = rawTime ? rawTime.replace(/\+(\d+)/, '-$1') : null
+      const row: Record<string, unknown> = { match_date: jm.date || null, match_time, venue: jm.ground || null, round: jm.round || null }
         if (jm.num && jm.num >= 73) {
           row.id = jm.num
           if (jm.team1 && !/^\d/.test(jm.team1) && !/^[WL]/.test(jm.team1)) row.home_team = TEAM_EN_FR[jm.team1] || jm.team1
@@ -80,6 +82,30 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
+  const scheduleLoading = ref(false)
+  const scheduleMsg     = ref('')
+  let scheduleMsgTimer: ReturnType<typeof setTimeout> | null = null
+
+  async function syncSchedule() {
+    const matchesStore = useMatchesStore()
+    scheduleLoading.value = true
+    scheduleMsg.value = ''
+    try {
+      const { data, error } = await sb.functions.invoke('sync-schedule')
+      if (error) throw error
+      const result = data as { synced: number }
+      scheduleMsg.value = `✓ ${result.synced} horaires synchronisés`
+      const { data: mData } = await sb.from('matches').select('*').order('id')
+      matchesStore.matches = (mData || []).map(mapMatchRow)
+    } catch (e) {
+      scheduleMsg.value = '✗ ' + (e as Error).message
+    } finally {
+      scheduleLoading.value = false
+      if (scheduleMsgTimer) clearTimeout(scheduleMsgTimer)
+      scheduleMsgTimer = setTimeout(() => { scheduleMsg.value = '' }, 3000)
+    }
+  }
+
   const syncLoading = ref(false)
   const syncMsg     = ref('')
   let syncMsgTimer: ReturnType<typeof setTimeout> | null = null
@@ -108,5 +134,5 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
-  return { isAdmin, showAdminModal, adminPassInput, adminPassError, showImportModal, importJsonText, importStatus, importLoading, openAdminModal, closeAdminModal, submitAdminPass, exitAdmin, importJson, syncLoading, syncMsg, syncFromApi }
+  return { isAdmin, showAdminModal, adminPassInput, adminPassError, showImportModal, importJsonText, importStatus, importLoading, openAdminModal, closeAdminModal, submitAdminPass, exitAdmin, importJson, scheduleLoading, scheduleMsg, syncSchedule, syncLoading, syncMsg, syncFromApi }
 })

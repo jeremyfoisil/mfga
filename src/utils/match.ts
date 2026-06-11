@@ -46,6 +46,12 @@ export function formatDate(dateStr: string): string {
   return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })
 }
 
+export function formatMatchTime(m: Match): string {
+  const ms = matchStartsAtMs(m)
+  if (ms === Infinity) return m.matchTime || ''
+  return new Date(ms).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+}
+
 export function matchStartsAtMs(m: Match): number {
   if (!m.matchDate || !m.matchTime) return Infinity
   let found = m.matchTime.match(/^(\d{2}):(\d{2}):\d{2}([+-]\d+)/)
