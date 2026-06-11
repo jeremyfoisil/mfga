@@ -9,7 +9,17 @@ import { C, sCard, sInput, sLabel, KO_STAGES, GROUP_IDS } from '../../constants/
 import { calcMatchPoints, matchStartsAtMs, formatDate, formatMatchTime } from '../../utils/match'
 import { getFlag, getFlagBg, initials } from '../../utils/ui'
 import LineupModal, { type LineupData } from '../modals/LineupModal.vue'
+import type { Goal, Card } from '../../types'
 import { sb } from '../../supabase'
+
+// Merge goals + cards of one team into a single timeline (each line carries its emoji)
+interface SideEvent { name: string; minute: number; emoji: string; penalty?: boolean; owngoal?: boolean }
+function sideEvents(goals: Goal[], cards: Card[]): SideEvent[] {
+  return [
+    ...(goals || []).map(g => ({ name: g.name, minute: g.minute, emoji: '⚽', penalty: g.penalty, owngoal: g.owngoal })),
+    ...(cards || []).map(c => ({ name: c.name, minute: c.minute, emoji: c.red ? '🟥' : '🟨' })),
+  ].sort((a, b) => a.minute - b.minute)
+}
 
 const parts        = useParticipantsStore()
 const matchesStore = useMatchesStore()
@@ -334,39 +344,17 @@ function toggleJoker(pid: number | null, matchId: number) {
           Équipes à définir à l'issue de la phase de groupes
         </div>
 
-        <!-- Buts + Cartons KO (colonnes séparées) -->
+        <!-- Buts + Cartons KO — 2 colonnes sous chaque équipe -->
         <div v-if="m.homeKnown && m.awayKnown && (m.result.goalsHome.length || m.result.goalsAway.length || m.result.cardsHome.length || m.result.cardsAway.length)"
-          style="margin-top: 10px; display: flex; gap: 14px; align-items: flex-start">
-          <!-- Colonne Buts -->
-          <div v-if="m.result.goalsHome.length || m.result.goalsAway.length" style="flex: 1; min-width: 0">
-            <div style="font-size: 9px; color: #475569; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; text-align: center">⚽ Buts</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
-              <div style="text-align: right">
-                <div v-for="g in [...m.result.goalsHome].sort((a,b) => a.minute - b.minute)" :key="g.name + g.minute" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
-                  {{ g.name }}<span v-if="g.owngoal" style="color: #ef4444"> (csc)</span><span v-if="g.penalty" style="color: #f59e0b"> (p)</span> <span style="color: #64748b">{{ g.minute }}'</span>
-                </div>
-              </div>
-              <div>
-                <div v-for="g in [...m.result.goalsAway].sort((a,b) => a.minute - b.minute)" :key="g.name + g.minute" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
-                  <span style="color: #64748b">{{ g.minute }}'</span><span v-if="g.penalty" style="color: #f59e0b"> (p)</span><span v-if="g.owngoal" style="color: #ef4444"> (csc)</span> {{ g.name }}
-                </div>
-              </div>
+          style="margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
+          <div style="text-align: right">
+            <div v-for="(e, i) in sideEvents(m.result.goalsHome, m.result.cardsHome)" :key="'h' + i" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
+              {{ e.name }}<span v-if="e.owngoal" style="color: #ef4444"> (csc)</span><span v-if="e.penalty" style="color: #f59e0b"> (p)</span> {{ e.emoji }} <span style="color: #64748b">{{ e.minute }}'</span>
             </div>
           </div>
-          <!-- Colonne Cartons -->
-          <div v-if="m.result.cardsHome.length || m.result.cardsAway.length" style="flex: 1; min-width: 0">
-            <div style="font-size: 9px; color: #475569; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; text-align: center">🟨 Cartons</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
-              <div style="text-align: right">
-                <div v-for="c in [...m.result.cardsHome].sort((a,b) => a.minute - b.minute)" :key="c.name + c.minute" style="font-size: 10px; color: #94a3b8; line-height: 1.7">
-                  {{ c.name }} <span style="font-size: 9px">{{ c.red ? '🟥' : '🟨' }}</span> <span style="color: #64748b">{{ c.minute }}'</span>
-                </div>
-              </div>
-              <div>
-                <div v-for="c in [...m.result.cardsAway].sort((a,b) => a.minute - b.minute)" :key="c.name + c.minute" style="font-size: 10px; color: #94a3b8; line-height: 1.7">
-                  <span style="color: #64748b">{{ c.minute }}'</span> <span style="font-size: 9px">{{ c.red ? '🟥' : '🟨' }}</span> {{ c.name }}
-                </div>
-              </div>
+          <div>
+            <div v-for="(e, i) in sideEvents(m.result.goalsAway, m.result.cardsAway)" :key="'a' + i" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
+              <span style="color: #64748b">{{ e.minute }}'</span> {{ e.emoji }}<span v-if="e.penalty" style="color: #f59e0b"> (p)</span><span v-if="e.owngoal" style="color: #ef4444"> (csc)</span> {{ e.name }}
             </div>
           </div>
         </div>
@@ -501,39 +489,17 @@ function toggleJoker(pid: number | null, matchId: number) {
           </div>
         </div>
 
-        <!-- Buts + Cartons (colonnes séparées) -->
+        <!-- Buts + Cartons — 2 colonnes sous chaque équipe -->
         <div v-if="m.result.goalsHome.length || m.result.goalsAway.length || m.result.cardsHome.length || m.result.cardsAway.length"
-          style="margin-top: 10px; display: flex; gap: 14px; align-items: flex-start">
-          <!-- Colonne Buts -->
-          <div v-if="m.result.goalsHome.length || m.result.goalsAway.length" style="flex: 1; min-width: 0">
-            <div style="font-size: 9px; color: #475569; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; text-align: center">⚽ Buts</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
-              <div style="text-align: right">
-                <div v-for="g in [...m.result.goalsHome].sort((a,b) => a.minute - b.minute)" :key="g.name + g.minute" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
-                  {{ g.name }}<span v-if="g.owngoal" style="color: #ef4444"> (csc)</span><span v-if="g.penalty" style="color: #f59e0b"> (p)</span> <span style="color: #64748b">{{ g.minute }}'</span>
-                </div>
-              </div>
-              <div>
-                <div v-for="g in [...m.result.goalsAway].sort((a,b) => a.minute - b.minute)" :key="g.name + g.minute" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
-                  <span style="color: #64748b">{{ g.minute }}'</span><span v-if="g.penalty" style="color: #f59e0b"> (p)</span><span v-if="g.owngoal" style="color: #ef4444"> (csc)</span> {{ g.name }}
-                </div>
-              </div>
+          style="margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
+          <div style="text-align: right">
+            <div v-for="(e, i) in sideEvents(m.result.goalsHome, m.result.cardsHome)" :key="'h' + i" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
+              {{ e.name }}<span v-if="e.owngoal" style="color: #ef4444"> (csc)</span><span v-if="e.penalty" style="color: #f59e0b"> (p)</span> {{ e.emoji }} <span style="color: #64748b">{{ e.minute }}'</span>
             </div>
           </div>
-          <!-- Colonne Cartons -->
-          <div v-if="m.result.cardsHome.length || m.result.cardsAway.length" style="flex: 1; min-width: 0">
-            <div style="font-size: 9px; color: #475569; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; text-align: center">🟨 Cartons</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
-              <div style="text-align: right">
-                <div v-for="c in [...m.result.cardsHome].sort((a,b) => a.minute - b.minute)" :key="c.name + c.minute" style="font-size: 10px; color: #94a3b8; line-height: 1.7">
-                  {{ c.name }} <span style="font-size: 9px">{{ c.red ? '🟥' : '🟨' }}</span> <span style="color: #64748b">{{ c.minute }}'</span>
-                </div>
-              </div>
-              <div>
-                <div v-for="c in [...m.result.cardsAway].sort((a,b) => a.minute - b.minute)" :key="c.name + c.minute" style="font-size: 10px; color: #94a3b8; line-height: 1.7">
-                  <span style="color: #64748b">{{ c.minute }}'</span> <span style="font-size: 9px">{{ c.red ? '🟥' : '🟨' }}</span> {{ c.name }}
-                </div>
-              </div>
+          <div>
+            <div v-for="(e, i) in sideEvents(m.result.goalsAway, m.result.cardsAway)" :key="'a' + i" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
+              <span style="color: #64748b">{{ e.minute }}'</span> {{ e.emoji }}<span v-if="e.penalty" style="color: #f59e0b"> (p)</span><span v-if="e.owngoal" style="color: #ef4444"> (csc)</span> {{ e.name }}
             </div>
           </div>
         </div>
