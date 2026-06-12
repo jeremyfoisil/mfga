@@ -41,3 +41,23 @@ export function computeMatchStats(matches: Match[]): StatRow[] {
 
   return [...rows.values()]
 }
+
+export interface StatGroup {
+  rank: number
+  value: number
+  players: StatRow[]
+}
+
+// Group an already value-sorted list into ranks: players sharing the same
+// value land on the same rank (dense ranking, so ranks increment by one per
+// distinct value — rank N is the Nth line).
+export function groupByRank(list: StatRow[], val: (s: StatRow) => number): StatGroup[] {
+  const groups: StatGroup[] = []
+  for (const s of list) {
+    const v = val(s)
+    const last = groups[groups.length - 1]
+    if (last && last.value === v) last.players.push(s)
+    else groups.push({ rank: groups.length + 1, value: v, players: [s] })
+  }
+  return groups
+}
