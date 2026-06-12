@@ -267,7 +267,15 @@ Deno.serve(async () => {
   }
   const byId = new Map((dbMatches ?? []).map(m => [Number(m.id), m]))
 
-  const upserts: Record<string, unknown>[] = []
+  // IMPORTANT: a single bulk upsert with heterogeneous keys is unsafe here.
+  // PostgREST unions the keys of all rows into one column set, so if ONE row
+  // carries goals_home/cards_home (because it needs events) every other row in
+  // the batch gets those columns written as NULL — wiping the goals/cards of
+  // finished matches that weren't refreshed this run. So we keep the bulk
+  // upserts uniform (status/result only) and write events as targeted updates.
+  const baseWithResult: Record<string, unknown>[] = [] // { id, live_status, result_home, result_away }
+  const baseNoResult: Record<string, unknown>[] = []   // { id, live_status }
+  const eventUpdates: { id: number; cols: Record<string, unknown> }[] = []
   let eventsChanged = false
 
   for (const fx of fixtures) {
@@ -275,14 +283,20 @@ Deno.serve(async () => {
     if (!db) continue
 
     const status = mapStatus(fx.fixture.status.short)
-    const upsert: Record<string, unknown> = { id: fx.fixture.id, live_status: status }
 
     // Orientation: our home_team may be the API away team (matched by sorted pair)
     const flipped = norm(fx.teams.home.name) !== db.home_team
 
     if (fx.goals.home !== null && fx.goals.away !== null) {
-      upsert.result_home = flipped ? fx.goals.away : fx.goals.home
-      upsert.result_away = flipped ? fx.goals.home : fx.goals.away
+      baseWithResult.push({
+        id: fx.fixture.id,
+        live_status: status,
+        result_home: flipped ? fx.goals.away : fx.goals.home,
+        result_away: flipped ? fx.goals.home : fx.goals.away,
+      })
+    } else {
+      // No API result yet → never touch result columns (preserves manual entries)
+      baseNoResult.push({ id: fx.fixture.id, live_status: status })
     }
 
     // Fetch events (goals + cards) when live, or to backfill a match not yet detailed
@@ -291,37 +305,57 @@ Deno.serve(async () => {
     const needEvents = status === 'live' || (status === 'finished' && !hasGoals && !hasCards)
     if (needEvents) {
       const ev = await fetchEvents(fx.fixture.id, fx.teams.home.id)
-      if (ev) {
-        upsert.goals_home = flipped ? ev.goalsAway : ev.goalsHome
-        upsert.goals_away = flipped ? ev.goalsHome : ev.goalsAway
-        upsert.cards_home = flipped ? ev.cardsAway : ev.cardsHome
-        upsert.cards_away = flipped ? ev.cardsHome : ev.cardsAway
+      // Only write when we actually got events — an empty (throttled) response
+      // must never overwrite goals/cards already stored for a finished match.
+      const hasEv = ev && (ev.goalsHome.length || ev.goalsAway.length || ev.cardsHome.length || ev.cardsAway.length)
+      if (ev && hasEv) {
+        eventUpdates.push({
+          id: fx.fixture.id,
+          cols: {
+            goals_home: flipped ? ev.goalsAway : ev.goalsHome,
+            goals_away: flipped ? ev.goalsHome : ev.goalsAway,
+            cards_home: flipped ? ev.cardsAway : ev.cardsHome,
+            cards_away: flipped ? ev.cardsHome : ev.cardsAway,
+          },
+        })
         eventsChanged = true
       }
     }
-
-    upserts.push(upsert)
   }
 
-  if (!upserts.length) {
+  const synced = baseWithResult.length + baseNoResult.length
+  if (!synced) {
     return new Response(JSON.stringify({ synced: 0, message: 'No matches to update' }), {
       headers: { 'Content-Type': 'application/json' },
     })
   }
 
-  const { error: upsertErr } = await supabase
-    .from('matches')
-    .upsert(upserts, { onConflict: 'id' })
-  if (upsertErr) {
-    return new Response(JSON.stringify({ error: upsertErr.message }), {
-      status: 500, headers: { 'Content-Type': 'application/json' },
-    })
+  // Two uniform-key bulk upserts (no column ever NULLed unintentionally)
+  for (const batch of [baseWithResult, baseNoResult]) {
+    if (!batch.length) continue
+    const { error: upsertErr } = await supabase.from('matches').upsert(batch, { onConflict: 'id' })
+    if (upsertErr) {
+      return new Response(JSON.stringify({ error: upsertErr.message }), {
+        status: 500, headers: { 'Content-Type': 'application/json' },
+      })
+    }
+  }
+
+  // Events written per-match as targeted column updates, so they only ever
+  // touch the four event columns of the match they belong to.
+  for (const e of eventUpdates) {
+    const { error } = await supabase.from('matches').update(e.cols).eq('id', e.id)
+    if (error) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500, headers: { 'Content-Type': 'application/json' },
+      })
+    }
   }
 
   // Recompute aggregated player stats only when match events actually changed
   if (eventsChanged) await recomputePlayerStats(supabase)
 
-  return new Response(JSON.stringify({ synced: upserts.length, eventsChanged }), {
+  return new Response(JSON.stringify({ synced, eventsChanged }), {
     headers: { 'Content-Type': 'application/json' },
   })
 })
