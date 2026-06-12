@@ -24,6 +24,10 @@ const canEditBonusResult = computed(() => admin.isAdmin && !bonusLocked.value)
 const syncingStats       = ref(false)
 const syncMsg            = ref('')
 
+// Each bonus question is collapsed by default — only the result shows until expanded.
+const expanded = ref<Record<string, boolean>>({})
+function toggleExpand(id: string) { expanded.value = { ...expanded.value, [id]: !expanded.value[id] } }
+
 function isMe(pid: number) { return pid === myParticipantId.value }
 
 function syncResultsFromStats() {
@@ -104,8 +108,8 @@ function getBonusIcon(id: string) { return BONUS_ICONS[id] }
     </div>
 
     <div v-for="b in BONUS_TYPES" :key="b.id" class="card-rel" :style="{ ...sCard, padding: '0', overflow: 'visible' }">
-      <!-- Bonus header -->
-      <div class="bonus-header" :style="{ background: getBonusIcon(b.id).bg }">
+      <!-- Bonus header (click to expand/collapse the participants' pronostics) -->
+      <div class="bonus-header" :style="{ background: getBonusIcon(b.id).bg, cursor: 'pointer' }" @click="toggleExpand(b.id)" :title="expanded[b.id] ? 'Replier' : 'Déployer les pronostics'">
         <div class="bonus-icon-box" style="background: rgba(255,255,255,0.18)">{{ getBonusIcon(b.id).icon }}</div>
         <div style="flex: 1; min-width: 0">
           <div class="anton" style="font-size: 15px; color: #fff; letter-spacing: 0.8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ b.label }}</div>
@@ -116,6 +120,7 @@ function getBonusIcon(id: string) { return BONUS_ICONS[id] }
         <div style="background: rgba(0,0,0,0.3); padding: 4px 10px; border-radius: 999px; font-family: Anton, sans-serif; font-size: 13px; color: #fff; letter-spacing: 1px; flex-shrink: 0">
           +{{ b.points }} PTS
         </div>
+        <div style="flex-shrink: 0; color: #fff; font-size: 13px; width: 16px; text-align: center; transition: transform 0.2s" :style="{ transform: expanded[b.id] ? 'rotate(90deg)' : 'rotate(0deg)' }">▸</div>
       </div>
 
       <div style="padding: 0 14px 14px">
@@ -155,7 +160,8 @@ function getBonusIcon(id: string) { return BONUS_ICONS[id] }
                 </div>
               </template>
             </div>
-            <!-- Participant rows -->
+            <!-- Participant rows — hidden until the question is expanded -->
+            <template v-if="expanded[b.id]">
             <div v-for="p in parts.participants" :key="p.id" style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px">
               <div style="display: flex; align-items: center; gap: 6px; width: 90px; flex-shrink: 0">
                 <div :style="{ width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, ' + p.color + ', ' + p.color + 'cc)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 700, fontFamily: 'Anton, sans-serif', flexShrink: 0 }">{{ initials(p.name) }}</div>
@@ -187,8 +193,11 @@ function getBonusIcon(id: string) { return BONUS_ICONS[id] }
               <span v-if="isBonusCorrect(p.id, b.id, i - 1)" style="color: #22c55e; font-weight: 800; font-size: 12px; flex-shrink: 0; font-family: Anton, sans-serif; letter-spacing: 0.5px">+{{ b.points }}</span>
               <span v-else-if="isBonusWrong(p.id, b.id, i - 1)" style="color: #ef4444; font-size: 14px; flex-shrink: 0">✕</span>
             </div>
+            </template>
           </div>
         </template>
+        <!-- Collapsed hint -->
+        <div v-if="!expanded[b.id]" @click="toggleExpand(b.id)" style="text-align: center; font-size: 10px; color: #64748b; cursor: pointer; padding: 8px 0 2px; letter-spacing: 0.5px">▾ Déployer les {{ parts.participants.length }} pronostics</div>
       </div>
     </div>
   </div>
