@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { getFlag, getFlagBg } from '../../utils/ui'
 import { C } from '../../constants/ui'
 
-interface Player { name: string; position: 'GK' | 'DEF' | 'MID' | 'FWD' }
+interface Player { id?: number; name: string; position: 'GK' | 'DEF' | 'MID' | 'FWD' }
 interface TeamData { name: string; players: Player[] }
 export interface LineupData {
   source: 'lineup' | 'squad'
@@ -11,14 +11,70 @@ export interface LineupData {
   away: TeamData
 }
 
-const props = defineProps<{
+interface Goal { id?: number; name: string; minute: number; penalty?: boolean; owngoal?: boolean }
+interface Card { id?: number; name: string; minute: number; red?: boolean }
+
+const props = withDefaults(defineProps<{
   loading: boolean
   data: LineupData | null
   homeName: string
   awayName: string
   error: string | null
-}>()
+  homeGoals?: Goal[]
+  awayGoals?: Goal[]
+  homeCards?: Card[]
+  awayCards?: Card[]
+}>(), {
+  homeGoals: () => [], awayGoals: () => [],
+  homeCards: () => [], awayCards: () => [],
+})
 const emit = defineEmits<{ (e: 'close'): void }>()
+
+// ── Goal / card badges per player ──────────────────────────────────
+// Primary match is the API-Football player id (exact). Events or lineups
+// without an id (manual admin entries, partial squads) fall back to an
+// accent-insensitive last name + first initial key.
+const stripAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '')
+function nameKey(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  const last = parts.length === 1 ? parts[0] : parts.slice(1).join(' ')
+  return stripAccents(last.toLowerCase()) + '|' + stripAccents((name.trim()[0] ?? '').toLowerCase())
+}
+
+type Badge = { goals: number; yellow: number; red: number }
+interface BadgeMaps { byId: Map<number, Badge>; byName: Map<string, Badge> }
+
+function buildBadges(goals: Goal[], cards: Card[]): BadgeMaps {
+  const byId = new Map<number, Badge>()
+  const byName = new Map<string, Badge>()
+  const get = (id: number | undefined, name: string) => {
+    const map = id != null ? byId : byName
+    const key = id != null ? id : nameKey(name)
+    let e = (map as Map<number | string, Badge>).get(key)
+    if (!e) { e = { goals: 0, yellow: 0, red: 0 }; (map as Map<number | string, Badge>).set(key, e) }
+    return e
+  }
+  for (const g of goals) get(g.id, g.name).goals++
+  for (const c of cards) c.red ? get(c.id, c.name).red++ : get(c.id, c.name).yellow++
+  return { byId, byName }
+}
+
+// A side's scorers = its own (non-own) goals + own goals it conceded to the
+// other side (stored on the beneficiary side, credited back to the scorer here).
+const homeBadges = computed(() => buildBadges(
+  [...props.homeGoals.filter(g => !g.owngoal), ...props.awayGoals.filter(g => g.owngoal)],
+  props.homeCards,
+))
+const awayBadges = computed(() => buildBadges(
+  [...props.awayGoals.filter(g => !g.owngoal), ...props.homeGoals.filter(g => g.owngoal)],
+  props.awayCards,
+))
+
+function badgeText(maps: BadgeMaps, player: { id?: number; name: string }): string {
+  const e = (player.id != null && maps.byId.get(player.id)) || maps.byName.get(nameKey(player.name))
+  if (!e) return ''
+  return '⚽'.repeat(e.goals) + '🟨'.repeat(e.yellow) + '🟥'.repeat(e.red)
+}
 
 // ── Formation builder ──────────────────────────────────────────────
 // Y spread (vertical distribution of players in each row)
@@ -189,6 +245,7 @@ function groupedSquad(players: Player[]) {
             style="position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none"
             :style="{ left: dot.x + '%', top: dot.y + '%' }">
             <div :style="{
+              position: 'relative',
               width: '26px', height: '26px', borderRadius: '50%',
               background: getFlagBg(homeName),
               border: dot.position === 'GK' ? '2px solid #fbbf24' : '2px solid rgba(255,255,255,0.8)',
@@ -198,7 +255,9 @@ function groupedSquad(players: Player[]) {
               textShadow: '0 1px 3px rgba(0,0,0,1)',
               boxShadow: '0 2px 8px rgba(0,0,0,0.7)',
               flexShrink: 0,
-            }">{{ dot.position === 'GK' ? 'GK' : '' }}</div>
+            }">{{ dot.position === 'GK' ? 'GK' : '' }}
+              <span v-if="badgeText(homeBadges, dot)" style="position: absolute; top: -7px; right: -8px; font-size: 9px; line-height: 1; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.9)">{{ badgeText(homeBadges, dot) }}</span>
+            </div>
             <div style="font-family: Anton, sans-serif; font-size: 8px; color: #fff; white-space: nowrap; letter-spacing: 0.5px; line-height: 1.2">
               {{ lastName(dot.name) }}
             </div>
@@ -209,6 +268,7 @@ function groupedSquad(players: Player[]) {
             style="position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none"
             :style="{ left: dot.x + '%', top: dot.y + '%' }">
             <div :style="{
+              position: 'relative',
               width: '26px', height: '26px', borderRadius: '50%',
               background: getFlagBg(awayName),
               border: dot.position === 'GK' ? '2px solid #fbbf24' : '2px solid rgba(255,255,255,0.8)',
@@ -218,7 +278,9 @@ function groupedSquad(players: Player[]) {
               textShadow: '0 1px 3px rgba(0,0,0,1)',
               boxShadow: '0 2px 8px rgba(0,0,0,0.7)',
               flexShrink: 0,
-            }">{{ dot.position === 'GK' ? 'GK' : '' }}</div>
+            }">{{ dot.position === 'GK' ? 'GK' : '' }}
+              <span v-if="badgeText(awayBadges, dot)" style="position: absolute; top: -7px; right: -8px; font-size: 9px; line-height: 1; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.9)">{{ badgeText(awayBadges, dot) }}</span>
+            </div>
             <div style="font-family: Anton, sans-serif; font-size: 8px; color: #fff; white-space: nowrap; letter-spacing: 0.5px; line-height: 1.2">
               {{ lastName(dot.name) }}
             </div>
@@ -236,7 +298,7 @@ function groupedSquad(players: Player[]) {
           </div>
           <div v-for="group in groupedSquad(data.home.players)" :key="group.pos" style="margin-bottom: 10px">
             <div style="font-size: 8px; color: #334155; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px">{{ group.label }}</div>
-            <div v-for="p in group.players" :key="p.name" style="font-size: 10px; color: #cbd5e1; padding: 2px 0; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ p.name }}</div>
+            <div v-for="p in group.players" :key="p.name" style="font-size: 10px; color: #cbd5e1; padding: 2px 0; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ p.name }}<span v-if="badgeText(homeBadges, p)" style="margin-left: 4px">{{ badgeText(homeBadges, p) }}</span></div>
           </div>
         </div>
         <!-- Away squad -->
@@ -246,7 +308,7 @@ function groupedSquad(players: Player[]) {
           </div>
           <div v-for="group in groupedSquad(data.away.players)" :key="group.pos" style="margin-bottom: 10px">
             <div style="font-size: 8px; color: #334155; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px">{{ group.label }}</div>
-            <div v-for="p in group.players" :key="p.name" style="font-size: 10px; color: #cbd5e1; padding: 2px 0; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ p.name }}</div>
+            <div v-for="p in group.players" :key="p.name" style="font-size: 10px; color: #cbd5e1; padding: 2px 0; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ p.name }}<span v-if="badgeText(awayBadges, p)" style="margin-left: 4px">{{ badgeText(awayBadges, p) }}</span></div>
           </div>
         </div>
       </div>

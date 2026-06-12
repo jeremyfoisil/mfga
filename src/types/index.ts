@@ -1,12 +1,15 @@
 export interface Goal {
+  id?: number
   name: string
   minute: number
   penalty?: boolean
   owngoal?: boolean
   assist?: string
+  assistId?: number
 }
 
 export interface Card {
+  id?: number
   name: string
   minute: number
   red?: boolean

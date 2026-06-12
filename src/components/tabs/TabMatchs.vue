@@ -132,6 +132,8 @@ const lineup = ref<{
   error: string | null
 }>({ open: false, homeName: '', awayName: '', matchId: 0, loading: false, data: null, error: null })
 
+const lineupMatch = computed(() => matchesStore.matches.find(m => m.id === lineup.value.matchId))
+
 async function openLineup(m: import('../../types').Match) {
   lineup.value = { open: true, homeName: m.home, awayName: m.away, matchId: m.id, loading: true, data: null, error: null }
   try {
@@ -564,6 +566,10 @@ Giroud, 45"
     :home-name="lineup.homeName"
     :away-name="lineup.awayName"
     :error="lineup.error"
+    :home-goals="lineupMatch?.result.goalsHome ?? []"
+    :away-goals="lineupMatch?.result.goalsAway ?? []"
+    :home-cards="lineupMatch?.result.cardsHome ?? []"
+    :away-cards="lineupMatch?.result.cardsAway ?? []"
     @close="lineup.open = false"
   />
 </template>

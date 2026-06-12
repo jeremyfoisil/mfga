@@ -9,7 +9,7 @@ const APISPORTS_KEY = Deno.env.get('APISPORTS_KEY') ?? '872ee48ce93458599691cffe
 const API_HOST = 'v3.football.api-sports.io'
 
 type Position = 'GK' | 'DEF' | 'MID' | 'FWD'
-interface Player { name: string; position: Position }
+interface Player { id?: number; name: string; position: Position }
 interface TeamData { name: string; players: Player[] }
 
 // DB team name -> API-Football team id
@@ -41,7 +41,7 @@ const apiFetch = (path: string) =>
 
 interface LineupTeam {
   team: { id: number; name: string }
-  startXI: { player: { name: string; pos: string } }[]
+  startXI: { player: { id: number | null; name: string; pos: string } }[]
 }
 
 async function fetchLineup(fixtureId: number): Promise<{ home: TeamData; away: TeamData } | null> {
@@ -54,6 +54,7 @@ async function fetchLineup(fixtureId: number): Promise<{ home: TeamData; away: T
     const toTeam = (lt: LineupTeam): TeamData => ({
       name: norm(lt.team.name),
       players: (lt.startXI ?? []).map(s => ({
+        ...(s.player.id ? { id: s.player.id } : {}),
         name: s.player.name,
         position: LINEUP_POS[s.player.pos] ?? 'MID',
       })),
@@ -69,10 +70,10 @@ async function fetchSquad(team: string): Promise<Player[]> {
   const res = await apiFetch(`players/squads?team=${id}`)
   if (!res.ok) return []
   const { response } = await res.json() as {
-    response: { players: { name: string; position: string }[] }[]
+    response: { players: { id: number | null; name: string; position: string }[] }[]
   }
   const players = response?.[0]?.players ?? []
-  return players.map(p => ({ name: p.name, position: SQUAD_POS[p.position] ?? 'MID' }))
+  return players.map(p => ({ ...(p.id ? { id: p.id } : {}), name: p.name, position: SQUAD_POS[p.position] ?? 'MID' }))
 }
 
 Deno.serve(async (req) => {
