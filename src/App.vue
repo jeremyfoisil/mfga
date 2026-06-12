@@ -96,6 +96,8 @@ input[type=number] { -moz-appearance: textfield; }
 input, select, textarea { box-sizing: border-box; }
 
 .anton { font-family: 'Anton', 'Syne', sans-serif; letter-spacing: 0.5px; }
+/* Country-flag emojis have no glyphs in Windows' Segoe UI Emoji; force a font that ships them. */
+.flag { font-family: 'Noto Color Emoji', 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif; }
 
 .card-rel { position: relative; overflow: hidden; }
 
@@ -305,7 +307,7 @@ input, select, textarea { box-sizing: border-box; }
 .p-pts  { font-family: 'Anton', sans-serif; font-size: 16px; }
 
 /* ── Bonus ─────────────────────────────────────────────────────── */
-.bonus-header { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin: 0 0 14px; border-radius: 10px 10px 0 0; }
+.bonus-header { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin: 0 0 14px; border-radius: 12px 12px 0 0; }
 .bonus-icon-box { width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
 
 /* ── Trump dance ───────────────────────────────────────────────── */

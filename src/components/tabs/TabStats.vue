@@ -64,7 +64,7 @@ const sections = computed(() => [
                 <span v-else style="font-family: Anton, sans-serif; font-size: 11px; color: #475569">{{ idx + 1 }}</span>
               </td>
               <!-- Flag -->
-              <td style="padding: 8px 6px; width: 24px; font-size: 16px; text-align: center">{{ getFlag(s.team) }}</td>
+              <td class="flag" style="padding: 8px 6px; width: 24px; font-size: 16px; text-align: center">{{ getFlag(s.team) }}</td>
               <!-- Player name -->
               <td style="padding: 8px 6px">
                 <div style="font-size: 13px; font-weight: 700; color: #f8fafc">{{ s.player }}</div>

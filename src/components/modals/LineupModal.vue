@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { getFlag, getFlagBg } from '../../utils/ui'
 import { C } from '../../constants/ui'
 
-interface Player { id?: number; name: string; position: 'GK' | 'DEF' | 'MID' | 'FWD' }
-interface TeamData { name: string; players: Player[] }
+interface Player { id?: number; name: string; position: 'GK' | 'DEF' | 'MID' | 'FWD'; number?: number; age?: number; photo?: string; onMin?: number; offMin?: number }
+interface TeamData { name: string; players: Player[]; substitutes?: Player[] }
 export interface LineupData {
   source: 'lineup' | 'squad'
   home: TeamData
@@ -41,21 +41,21 @@ function nameKey(name: string): string {
   return stripAccents(last.toLowerCase()) + '|' + stripAccents((name.trim()[0] ?? '').toLowerCase())
 }
 
-type Badge = { goals: number; yellow: number; red: number }
-interface BadgeMaps { byId: Map<number, Badge>; byName: Map<string, Badge> }
+type BadgeEvent = { icon: string; minute: number }
+interface BadgeMaps { byId: Map<number, BadgeEvent[]>; byName: Map<string, BadgeEvent[]> }
 
 function buildBadges(goals: Goal[], cards: Card[]): BadgeMaps {
-  const byId = new Map<number, Badge>()
-  const byName = new Map<string, Badge>()
-  const get = (id: number | undefined, name: string) => {
+  const byId = new Map<number, BadgeEvent[]>()
+  const byName = new Map<string, BadgeEvent[]>()
+  const get = (id: number | undefined, name: string): BadgeEvent[] => {
     const map = id != null ? byId : byName
     const key = id != null ? id : nameKey(name)
-    let e = (map as Map<number | string, Badge>).get(key)
-    if (!e) { e = { goals: 0, yellow: 0, red: 0 }; (map as Map<number | string, Badge>).set(key, e) }
+    let e = (map as Map<number | string, BadgeEvent[]>).get(key)
+    if (!e) { e = []; (map as Map<number | string, BadgeEvent[]>).set(key, e) }
     return e
   }
-  for (const g of goals) get(g.id, g.name).goals++
-  for (const c of cards) c.red ? get(c.id, c.name).red++ : get(c.id, c.name).yellow++
+  for (const g of goals) get(g.id, g.name).push({ icon: '⚽', minute: g.minute })
+  for (const c of cards) get(c.id, c.name).push({ icon: c.red ? '🟥' : '🟨', minute: c.minute })
   return { byId, byName }
 }
 
@@ -70,10 +70,16 @@ const awayBadges = computed(() => buildBadges(
   props.awayCards,
 ))
 
+// One formatted entry per goal/card, chronological, minute in parentheses when known.
+function badgeList(maps: BadgeMaps, player: { id?: number; name: string }): string[] {
+  const ev = (player.id != null && maps.byId.get(player.id)) || maps.byName.get(nameKey(player.name))
+  if (!ev || !ev.length) return []
+  return [...ev].sort((a, b) => a.minute - b.minute)
+    .map(e => e.minute ? `${e.icon} (${e.minute}')` : e.icon)
+}
+// Single-line variant for the inline lists (substitutes / squad fallback).
 function badgeText(maps: BadgeMaps, player: { id?: number; name: string }): string {
-  const e = (player.id != null && maps.byId.get(player.id)) || maps.byName.get(nameKey(player.name))
-  if (!e) return ''
-  return '⚽'.repeat(e.goals) + '🟨'.repeat(e.yellow) + '🟥'.repeat(e.red)
+  return badgeList(maps, player).join(' ')
 }
 
 // ── Formation builder ──────────────────────────────────────────────
@@ -133,6 +139,16 @@ function lastName(full: string) {
   return parts.length === 1 ? full : parts.slice(1).join(' ')
 }
 
+// ── Hover card (photo / number / age) ──────────────────────────────
+const hover = ref<{ p: Player; x: number; y: number } | null>(null)
+function showHover(e: MouseEvent, p: Player) {
+  // Nothing extra to reveal → don't pop an empty card.
+  if (!p.photo && p.number == null && p.age == null) return
+  const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  hover.value = { p, x: r.left + r.width / 2, y: r.top }
+}
+function hideHover() { hover.value = null }
+
 // ── Computed ───────────────────────────────────────────────────────
 const homeXI   = computed(() => props.data ? buildXI(props.data.home.players) : null)
 const awayXI   = computed(() => props.data ? buildXI(props.data.away.players) : null)
@@ -140,6 +156,11 @@ const homeDots = computed(() => homeXI.value ? toDots(homeXI.value, 'home') : []
 const awayDots = computed(() => awayXI.value ? toDots(awayXI.value, 'away') : [])
 const hasPlayers = computed(() => homeDots.value.length > 0 || awayDots.value.length > 0)
 const showLineup = computed(() => props.data?.source === 'lineup' && hasPlayers.value)
+
+// Substitutes only exist on an official lineup (the squad view already lists everyone).
+const homeSubs = computed(() => (showLineup.value && props.data?.home.substitutes) || [])
+const awaySubs = computed(() => (showLineup.value && props.data?.away.substitutes) || [])
+const hasSubs = computed(() => homeSubs.value.length > 0 || awaySubs.value.length > 0)
 
 const POS_LABEL: Record<string, string> = { GK: 'Gardien', DEF: 'Défenseurs', MID: 'Milieux', FWD: 'Attaquants' }
 
@@ -167,7 +188,7 @@ function groupedSquad(players: Player[]) {
       <!-- Header -->
       <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 10px; gap: 8px">
         <div style="display: flex; align-items: center; gap: 8px; min-width: 0">
-          <span style="font-size: 26px; line-height: 1; flex-shrink: 0">{{ getFlag(homeName) }}</span>
+          <span class="flag" style="font-size: 26px; line-height: 1; flex-shrink: 0">{{ getFlag(homeName) }}</span>
           <div style="min-width: 0">
             <div style="font-family: Anton, sans-serif; font-size: 14px; color: #f8fafc; letter-spacing: 0.8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ homeName }}</div>
             <div v-if="homeXI" style="font-size: 10px; color: #64748b; letter-spacing: 1px">{{ homeXI.formation }}</div>
@@ -175,7 +196,7 @@ function groupedSquad(players: Player[]) {
         </div>
         <div style="font-family: Anton, sans-serif; font-size: 11px; color: #475569; letter-spacing: 2px; flex-shrink: 0">VS</div>
         <div style="display: flex; align-items: center; gap: 8px; flex-direction: row-reverse; min-width: 0">
-          <span style="font-size: 26px; line-height: 1; flex-shrink: 0">{{ getFlag(awayName) }}</span>
+          <span class="flag" style="font-size: 26px; line-height: 1; flex-shrink: 0">{{ getFlag(awayName) }}</span>
           <div style="text-align: right; min-width: 0">
             <div style="font-family: Anton, sans-serif; font-size: 14px; color: #f8fafc; letter-spacing: 0.8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ awayName }}</div>
             <div v-if="awayXI" style="font-size: 10px; color: #64748b; letter-spacing: 1px">{{ awayXI.formation }}</div>
@@ -244,21 +265,27 @@ function groupedSquad(players: Player[]) {
           <div v-for="dot in homeDots" :key="'home-' + dot.name"
             style="position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none"
             :style="{ left: dot.x + '%', top: dot.y + '%' }">
-            <div :style="{
+            <div
+              @mouseenter="showHover($event, dot)" @mouseleave="hideHover"
+              :style="{
               position: 'relative',
-              width: '26px', height: '26px', borderRadius: '50%',
+              width: '31px', height: '31px', borderRadius: '50%',
               background: getFlagBg(homeName),
               border: dot.position === 'GK' ? '2px solid #fbbf24' : '2px solid rgba(255,255,255,0.8)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '8px', fontWeight: 700, color: '#fff',
+              fontSize: '9px', fontWeight: 700, color: '#fff',
               fontFamily: 'Anton, sans-serif',
               textShadow: '0 1px 3px rgba(0,0,0,1)',
               boxShadow: '0 2px 8px rgba(0,0,0,0.7)',
-              flexShrink: 0,
+              flexShrink: 0, pointerEvents: 'auto', cursor: 'pointer',
             }">{{ dot.position === 'GK' ? 'GK' : '' }}
-              <span v-if="badgeText(homeBadges, dot)" style="position: absolute; top: -7px; right: -8px; font-size: 9px; line-height: 1; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.9)">{{ badgeText(homeBadges, dot) }}</span>
+              <div v-if="badgeList(homeBadges, dot).length || dot.offMin != null"
+                style="position: absolute; left: calc(100% + 4px); top: 50%; transform: translateY(-50%); display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; pointer-events: none; z-index: 5; background: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.35); border-radius: 5px; padding: 2px 5px; white-space: nowrap; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 9px; font-weight: 600; line-height: 1.4">
+                <span v-for="(b, i) in badgeList(homeBadges, dot)" :key="i" style="color: #0f172a">{{ b }}</span>
+                <span v-if="dot.offMin != null" title="Sorti du jeu" style="color: #dc2626; font-weight: 700">▼ {{ dot.offMin }}'</span>
+              </div>
             </div>
-            <div style="font-family: Anton, sans-serif; font-size: 8px; color: #fff; white-space: nowrap; letter-spacing: 0.5px; line-height: 1.2">
+            <div style="font-family: Anton, sans-serif; font-size: 10px; color: #fff; white-space: nowrap; letter-spacing: 0.5px; line-height: 1.2">
               {{ lastName(dot.name) }}
             </div>
           </div>
@@ -267,21 +294,27 @@ function groupedSquad(players: Player[]) {
           <div v-for="dot in awayDots" :key="'away-' + dot.name"
             style="position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none"
             :style="{ left: dot.x + '%', top: dot.y + '%' }">
-            <div :style="{
+            <div
+              @mouseenter="showHover($event, dot)" @mouseleave="hideHover"
+              :style="{
               position: 'relative',
-              width: '26px', height: '26px', borderRadius: '50%',
+              width: '31px', height: '31px', borderRadius: '50%',
               background: getFlagBg(awayName),
               border: dot.position === 'GK' ? '2px solid #fbbf24' : '2px solid rgba(255,255,255,0.8)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '8px', fontWeight: 700, color: '#fff',
+              fontSize: '9px', fontWeight: 700, color: '#fff',
               fontFamily: 'Anton, sans-serif',
               textShadow: '0 1px 3px rgba(0,0,0,1)',
               boxShadow: '0 2px 8px rgba(0,0,0,0.7)',
-              flexShrink: 0,
+              flexShrink: 0, pointerEvents: 'auto', cursor: 'pointer',
             }">{{ dot.position === 'GK' ? 'GK' : '' }}
-              <span v-if="badgeText(awayBadges, dot)" style="position: absolute; top: -7px; right: -8px; font-size: 9px; line-height: 1; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.9)">{{ badgeText(awayBadges, dot) }}</span>
+              <div v-if="badgeList(awayBadges, dot).length || dot.offMin != null"
+                style="position: absolute; left: calc(100% + 4px); top: 50%; transform: translateY(-50%); display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; pointer-events: none; z-index: 5; background: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.35); border-radius: 5px; padding: 2px 5px; white-space: nowrap; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 9px; font-weight: 600; line-height: 1.4">
+                <span v-for="(b, i) in badgeList(awayBadges, dot)" :key="i" style="color: #0f172a">{{ b }}</span>
+                <span v-if="dot.offMin != null" title="Sorti du jeu" style="color: #dc2626; font-weight: 700">▼ {{ dot.offMin }}'</span>
+              </div>
             </div>
-            <div style="font-family: Anton, sans-serif; font-size: 8px; color: #fff; white-space: nowrap; letter-spacing: 0.5px; line-height: 1.2">
+            <div style="font-family: Anton, sans-serif; font-size: 10px; color: #fff; white-space: nowrap; letter-spacing: 0.5px; line-height: 1.2">
               {{ lastName(dot.name) }}
             </div>
           </div>
@@ -289,8 +322,45 @@ function groupedSquad(players: Player[]) {
         </div>
       </div>
 
-      <!-- Squad lists -->
-      <div v-if="data && !loading" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: #1e293b; border-top: 1px solid #1e293b; margin-top: 0">
+      <!-- Substitutes — just below the pitch (official lineup only) -->
+      <div v-if="hasSubs" style="background: #0a0e1a; border-top: 1px solid #1e293b; padding: 10px 10px 12px">
+        <div style="font-size: 8px; color: #334155; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; text-align: center">🔁 Remplaçants</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+          <!-- Home subs -->
+          <div>
+            <div
+              v-for="p in homeSubs" :key="'hsub-' + p.name"
+              @mouseenter="showHover($event, p)" @mouseleave="hideHover"
+              :style="{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', color: '#94a3b8', padding: '2px 0', lineHeight: 1.4, cursor: (p.photo || p.number != null || p.age != null) ? 'pointer' : 'default' }">
+              <span style="flex-shrink: 0; min-width: 16px; text-align: center; font-family: Anton, sans-serif; font-size: 9px; color: #475569">{{ p.number != null ? p.number : '·' }}</span>
+              <span :style="{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: p.onMin != null ? '#e2e8f0' : '#94a3b8' }">{{ p.name }}</span>
+              <span v-if="badgeText(homeBadges, p)" style="flex-shrink: 0">{{ badgeText(homeBadges, p) }}</span>
+              <span style="margin-left: auto; display: inline-flex; gap: 4px; flex-shrink: 0; white-space: nowrap; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 10px; font-weight: 600">
+                <span v-if="p.onMin != null" style="color: #22c55e" title="Entré en jeu">▲ {{ p.onMin }}'</span>
+                <span v-if="p.offMin != null" style="color: #f87171" title="Sorti du jeu">▼ {{ p.offMin }}'</span>
+              </span>
+            </div>
+          </div>
+          <!-- Away subs -->
+          <div>
+            <div
+              v-for="p in awaySubs" :key="'asub-' + p.name"
+              @mouseenter="showHover($event, p)" @mouseleave="hideHover"
+              :style="{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', color: '#94a3b8', padding: '2px 0', lineHeight: 1.4, cursor: (p.photo || p.number != null || p.age != null) ? 'pointer' : 'default' }">
+              <span style="flex-shrink: 0; min-width: 16px; text-align: center; font-family: Anton, sans-serif; font-size: 9px; color: #475569">{{ p.number != null ? p.number : '·' }}</span>
+              <span :style="{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: p.onMin != null ? '#e2e8f0' : '#94a3b8' }">{{ p.name }}</span>
+              <span v-if="badgeText(awayBadges, p)" style="flex-shrink: 0">{{ badgeText(awayBadges, p) }}</span>
+              <span style="margin-left: auto; display: inline-flex; gap: 4px; flex-shrink: 0; white-space: nowrap; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 10px; font-weight: 600">
+                <span v-if="p.onMin != null" style="color: #22c55e" title="Entré en jeu">▲ {{ p.onMin }}'</span>
+                <span v-if="p.offMin != null" style="color: #f87171" title="Sorti du jeu">▼ {{ p.offMin }}'</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Squad lists — only as a fallback when there's no official lineup on the pitch -->
+      <div v-if="data && !loading && !showLineup" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: #1e293b; border-top: 1px solid #1e293b; margin-top: 0">
         <!-- Home squad -->
         <div style="background: #0a0e1a; padding: 12px 10px">
           <div style="margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #1e293b">
@@ -298,7 +368,7 @@ function groupedSquad(players: Player[]) {
           </div>
           <div v-for="group in groupedSquad(data.home.players)" :key="group.pos" style="margin-bottom: 10px">
             <div style="font-size: 8px; color: #334155; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px">{{ group.label }}</div>
-            <div v-for="p in group.players" :key="p.name" style="font-size: 10px; color: #cbd5e1; padding: 2px 0; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ p.name }}<span v-if="badgeText(homeBadges, p)" style="margin-left: 4px">{{ badgeText(homeBadges, p) }}</span></div>
+            <div v-for="p in group.players" :key="p.name" @mouseenter="showHover($event, p)" @mouseleave="hideHover" :style="{ fontSize: '10px', color: '#cbd5e1', padding: '2px 0', lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: (p.photo || p.number != null || p.age != null) ? 'pointer' : 'default' }">{{ p.name }}<span v-if="badgeText(homeBadges, p)" style="margin-left: 4px">{{ badgeText(homeBadges, p) }}</span></div>
           </div>
         </div>
         <!-- Away squad -->
@@ -308,11 +378,32 @@ function groupedSquad(players: Player[]) {
           </div>
           <div v-for="group in groupedSquad(data.away.players)" :key="group.pos" style="margin-bottom: 10px">
             <div style="font-size: 8px; color: #334155; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px">{{ group.label }}</div>
-            <div v-for="p in group.players" :key="p.name" style="font-size: 10px; color: #cbd5e1; padding: 2px 0; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ p.name }}<span v-if="badgeText(awayBadges, p)" style="margin-left: 4px">{{ badgeText(awayBadges, p) }}</span></div>
+            <div v-for="p in group.players" :key="p.name" @mouseenter="showHover($event, p)" @mouseleave="hideHover" :style="{ fontSize: '10px', color: '#cbd5e1', padding: '2px 0', lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: (p.photo || p.number != null || p.age != null) ? 'pointer' : 'default' }">{{ p.name }}<span v-if="badgeText(awayBadges, p)" style="margin-left: 4px">{{ badgeText(awayBadges, p) }}</span></div>
           </div>
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- Player hover card — photo / number / age -->
+  <div v-if="hover"
+    :style="{
+      position: 'fixed', left: hover.x + 'px', top: (hover.y - 10) + 'px',
+      transform: 'translate(-50%, -100%)', zIndex: 2000, pointerEvents: 'none',
+      background: '#0f172a', border: '1px solid #334155', borderRadius: '10px',
+      padding: '8px 10px', boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+      display: 'flex', alignItems: 'center', gap: '10px', maxWidth: '220px',
+    }">
+    <img v-if="hover.p.photo" :src="hover.p.photo" :alt="hover.p.name"
+      style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: #1e293b; flex-shrink: 0; border: 1px solid #334155" />
+    <div style="min-width: 0">
+      <div style="font-family: Anton, sans-serif; font-size: 12px; color: #f8fafc; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ hover.p.name }}</div>
+      <div style="font-size: 10px; color: #94a3b8; margin-top: 2px; white-space: nowrap">
+        <span v-if="hover.p.number != null" style="color: #fbbf24; font-weight: 700">#{{ hover.p.number }}</span>
+        <span v-if="hover.p.number != null && hover.p.age != null" style="margin: 0 5px; color: #475569">·</span>
+        <span v-if="hover.p.age != null">{{ hover.p.age }} ans</span>
+      </div>
     </div>
   </div>
   </Teleport>

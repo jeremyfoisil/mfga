@@ -81,7 +81,7 @@ function getBonusIcon(id: string) { return BONUS_ICONS[id] }
       <div>
         <div class="anton" style="font-size: 14px; color: #fbbf24; letter-spacing: 1px; margin-bottom: 2px">PRONOSTICS BONUS</div>
         <div :style="{ fontSize: '11px', color: C.muted, lineHeight: 1.5 }">
-          <span v-if="bonusLocked" style="color: #ef4444; font-weight: 700">🔒 Verrouillé depuis le 11 juin 2026.</span>
+          <span v-if="bonusLocked" style="color: #ef4444; font-weight: 700">🔒 Verrouillé depuis le 11 juin 2026.<span v-if="admin.isAdmin" style="color: #fbbf24; margin-left: 6px">⚡ Édition admin active</span></span>
           <span v-else>À compléter avant le <b style="color: #f8fafc">11 juin 2026 à minuit</b> (Paris time).</span>
         </div>
       </div>
@@ -103,7 +103,7 @@ function getBonusIcon(id: string) { return BONUS_ICONS[id] }
       </button>
     </div>
 
-    <div v-for="b in BONUS_TYPES" :key="b.id" class="card-rel" :style="{ ...sCard, padding: '0', overflow: 'hidden' }">
+    <div v-for="b in BONUS_TYPES" :key="b.id" class="card-rel" :style="{ ...sCard, padding: '0', overflow: 'visible' }">
       <!-- Bonus header -->
       <div class="bonus-header" :style="{ background: getBonusIcon(b.id).bg }">
         <div class="bonus-icon-box" style="background: rgba(255,255,255,0.18)">{{ getBonusIcon(b.id).icon }}</div>
@@ -161,7 +161,7 @@ function getBonusIcon(id: string) { return BONUS_ICONS[id] }
                 <div :style="{ width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, ' + p.color + ', ' + p.color + 'cc)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 700, fontFamily: 'Anton, sans-serif', flexShrink: 0 }">{{ initials(p.name) }}</div>
                 <span :style="{ fontSize: '11px', fontWeight: 600, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }">{{ p.name }}</span>
               </div>
-              <template v-if="bonusLocked || (!isMe(p.id) && !admin.isAdmin)">
+              <template v-if="!admin.isAdmin && (bonusLocked || !isMe(p.id))">
                 <div :style="{ ...sInput, color: getBonusProno(p.id, b.id + '_' + (i - 1)) ? (isBonusCorrect(p.id, b.id, i - 1) ? '#22c55e' : isBonusWrong(p.id, b.id, i - 1) ? '#ef4444' : C.text) : C.muted, borderColor: isBonusCorrect(p.id, b.id, i - 1) ? '#22c55e' : isBonusWrong(p.id, b.id, i - 1) ? '#ef444466' : C.border, opacity: isMe(p.id) ? 1 : 0.6, display: 'flex', alignItems: 'center' }">
                   {{ getBonusProno(p.id, b.id + '_' + (i - 1)) || '—' }}
                 </div>
