@@ -13,7 +13,7 @@ import ImportModal from './components/modals/ImportModal.vue'
 import TabParticipants from './components/tabs/TabParticipants.vue'
 import TabMatchs from './components/tabs/TabMatchs.vue'
 import TabBonus from './components/tabs/TabBonus.vue'
-import TabTableau from './components/tabs/TabTableau.vue'
+import TabResultats from './components/tabs/TabResultats.vue'
 import TabClassement from './components/tabs/TabClassement.vue'
 import TabStats from './components/tabs/TabStats.vue'
 
@@ -68,8 +68,8 @@ async function doLogout() {
         <TabParticipants v-if="app.tab === 0" />
         <TabMatchs       v-else-if="app.tab === 1" />
         <TabBonus        v-else-if="app.tab === 2" />
-        <TabStats        v-else-if="app.tab === 3" />
-        <TabTableau      v-else-if="app.tab === 4" />
+        <TabResultats    v-else-if="app.tab === 3" />
+        <TabStats        v-else-if="app.tab === 4" />
         <TabClassement   v-else-if="app.tab === 5" />
       </div>
       <AdminModal  v-if="admin.showAdminModal" />
