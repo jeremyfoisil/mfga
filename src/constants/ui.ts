@@ -7,7 +7,7 @@ export const C = {
   red: "#dc2626", blue: "#1e3a8a", whiteUS: "#f8fafc",
 } as const
 
-export const TABS = ["Participants", "Matchs", "Bonus", "Statistiques", "Résultats", "Classement"] as const
+export const TABS = ["Participants", "Matchs", "Bonus", "Résultats", "Statistiques", "Classement"] as const
 
 export const KO_STAGES: KOStage[] = [
   { id: "r32",   label: "32èmes" },
