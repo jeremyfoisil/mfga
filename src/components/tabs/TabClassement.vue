@@ -37,10 +37,19 @@ function calcScore(pid: number) {
   return { total, exactCount, diagCount }
 }
 
-const rankings = computed(() =>
-  parts.participants.map(p => ({ ...p, ...calcScore(p.id) }))
+const rankings = computed(() => {
+  const list = parts.participants.map(p => ({ ...p, ...calcScore(p.id) }))
     .sort((a, b) => b.total - a.total || b.exactCount - a.exactCount)
-)
+  // Competition ranking: equal points share a rank, the next rank skips (1, 1, 3…).
+  // Display order keeps the exact-count tiebreak, but the rank depends on points only.
+  let lastRank = 0, lastTotal = Number.NaN
+  return list.map((p, i) => {
+    const rank = i > 0 && p.total === lastTotal ? lastRank : i + 1
+    lastRank = rank
+    lastTotal = p.total
+    return { ...p, rank }
+  })
+})
 
 function matchPtsForRanking(pid: number) {
   let total = 0
@@ -85,7 +94,7 @@ function matchPtsForRanking(pid: number) {
             <div class="pts" style="color: #cbd5e1">{{ rankings[1].total }}</div>
             <div class="lbl">pts</div>
           </div>
-          <div class="podium-base">2</div>
+          <div class="podium-base">{{ rankings[1].rank }}</div>
         </div>
         <div v-else></div>
 
@@ -99,7 +108,7 @@ function matchPtsForRanking(pid: number) {
             <div class="pts" style="font-size: 30px; color: #fbbf24">{{ rankings[0].total }}</div>
             <div class="lbl">points</div>
           </div>
-          <div class="podium-base" style="background: linear-gradient(180deg, #78350f, #451a03); border-color: #f59e0b; color: #fbbf24">1</div>
+          <div class="podium-base" style="background: linear-gradient(180deg, #78350f, #451a03); border-color: #f59e0b; color: #fbbf24">{{ rankings[0].rank }}</div>
         </div>
 
         <!-- 3rd -->
@@ -111,7 +120,7 @@ function matchPtsForRanking(pid: number) {
             <div class="pts" style="font-size: 20px; color: #fb923c">{{ rankings[2].total }}</div>
             <div class="lbl">pts</div>
           </div>
-          <div class="podium-base">3</div>
+          <div class="podium-base">{{ rankings[2].rank }}</div>
         </div>
         <div v-else></div>
       </div>
@@ -129,7 +138,7 @@ function matchPtsForRanking(pid: number) {
     <div v-if="rankings.length > 3" style="margin-top: 8px">
       <div :style="sLabel">★ Autres positions</div>
       <div v-for="(p, i) in rankings.slice(3)" :key="p.id" class="card-rel" :style="{ ...sCard, display: 'flex', alignItems: 'center', gap: '12px', padding: '10px' }">
-        <div class="anton" :style="{ fontSize: '18px', width: '30px', textAlign: 'center', color: C.muted }">#{{ i + 4 }}</div>
+        <div class="anton" :style="{ fontSize: '18px', width: '30px', textAlign: 'center', color: C.muted }">#{{ p.rank }}</div>
         <div class="avatar-disc" :style="{ background: 'linear-gradient(135deg, ' + p.color + ', ' + p.color + 'cc)', width: '30px', height: '30px', fontSize: '12px' }">{{ initials(p.name) }}</div>
         <div style="flex: 1">
           <div class="anton" :style="{ fontSize: '14px', color: C.text }">{{ p.name }}</div>
