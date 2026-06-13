@@ -744,6 +744,7 @@ Giroud, 45"
   <!-- Lineup modal -->
   <LineupModal
     v-if="lineup.open"
+    :match-id="lineup.matchId"
     :loading="lineup.loading"
     :data="lineup.data"
     :home-name="lineup.homeName"

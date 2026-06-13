@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { getFlag, getFlagBg } from '../../utils/ui'
 import { C } from '../../constants/ui'
+import MatchStats from './MatchStats.vue'
 
 interface Player { id?: number; name: string; position: 'GK' | 'DEF' | 'MID' | 'FWD'; number?: number; age?: number; photo?: string; onMin?: number; offMin?: number }
 interface TeamData { name: string; players: Player[]; substitutes?: Player[] }
@@ -15,6 +16,7 @@ interface Goal { id?: number; name: string; minute: number; penalty?: boolean; o
 interface Card { id?: number; name: string; minute: number; red?: boolean }
 
 const props = withDefaults(defineProps<{
+  matchId: number
   loading: boolean
   data: LineupData | null
   homeName: string
@@ -29,6 +31,10 @@ const props = withDefaults(defineProps<{
   homeCards: () => [], awayCards: () => [],
 })
 const emit = defineEmits<{ (e: 'close'): void }>()
+
+const activeTab = ref<'lineup' | 'stats'>('lineup')
+const statsVisited = ref(false)
+function showStats() { activeTab.value = 'stats'; statsVisited.value = true }
 
 // ── Goal / card badges per player ──────────────────────────────────
 // Primary match is the API-Football player id (exact). Events or lineups
@@ -206,6 +212,23 @@ function groupedSquad(players: Player[]) {
           style="flex-shrink: 0; background: #1e293b; border: 1px solid #334155; border-radius: 50%; width: 28px; height: 28px; color: #64748b; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center">✕</button>
       </div>
 
+      <!-- Tab bar -->
+      <div style="display: flex; border-bottom: 1px solid #1e293b">
+        <button
+          @click="activeTab = 'lineup'"
+          :style="{ flex: 1, padding: '10px 0', background: 'transparent', border: 'none', borderBottom: activeTab === 'lineup' ? '2px solid #22c55e' : '2px solid transparent', color: activeTab === 'lineup' ? '#f8fafc' : '#64748b', fontFamily: 'Anton, sans-serif', fontSize: '12px', letterSpacing: '1.5px', textTransform: 'uppercase', cursor: 'pointer' }">
+          Compositions
+        </button>
+        <button
+          @click="showStats"
+          :style="{ flex: 1, padding: '10px 0', background: 'transparent', border: 'none', borderBottom: activeTab === 'stats' ? '2px solid #22c55e' : '2px solid transparent', color: activeTab === 'stats' ? '#f8fafc' : '#64748b', fontFamily: 'Anton, sans-serif', fontSize: '12px', letterSpacing: '1.5px', textTransform: 'uppercase', cursor: 'pointer' }">
+          Statistiques
+        </button>
+      </div>
+
+      <!-- Compositions tab body -->
+      <div v-show="activeTab === 'lineup'">
+
       <!-- Loading -->
       <div v-if="loading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 0; gap: 14px">
         <div class="lineup-spinner"></div>
@@ -381,6 +404,14 @@ function groupedSquad(players: Player[]) {
             <div v-for="p in group.players" :key="p.name" @mouseenter="showHover($event, p)" @mouseleave="hideHover" :style="{ fontSize: '10px', color: '#cbd5e1', padding: '2px 0', lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: (p.photo || p.number != null || p.age != null) ? 'pointer' : 'default' }">{{ p.name }}<span v-if="badgeText(awayBadges, p)" style="margin-left: 4px">{{ badgeText(awayBadges, p) }}</span></div>
           </div>
         </div>
+      </div>
+
+      </div>
+      <!-- /Compositions tab body -->
+
+      <!-- Statistiques tab body -->
+      <div v-show="activeTab === 'stats'">
+        <MatchStats v-if="statsVisited" :match-id="matchId" :home-name="homeName" :away-name="awayName" />
       </div>
 
     </div>
