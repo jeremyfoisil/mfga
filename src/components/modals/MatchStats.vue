@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { sb } from '../../supabase'
-import { getFlagBg } from '../../utils/ui'
+import { getFlagColor } from '../../utils/ui'
 
 interface StatLine { key: string; label: string; home: number; away: number; kind: 'percent' | 'number' }
 
@@ -34,6 +34,10 @@ function homePct(l: StatLine): number {
   const t = l.home + l.away
   return t === 0 ? 50 : Math.round((l.home / t) * 100)
 }
+// Solid team colors for readable bars (flag gradients are unreadable at 6px tall).
+const homeColor = computed(() => getFlagColor(props.homeName))
+const awayColor = computed(() => getFlagColor(props.awayName))
+const hasXg = computed(() => lines.value.some(l => l.key === 'xg'))
 </script>
 
 <template>
@@ -63,9 +67,14 @@ function homePct(l: StatLine): number {
       </div>
       <!-- comparison bar -->
       <div style="display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: #1e293b">
-        <div :style="{ width: homePct(l) + '%', background: l.home + l.away === 0 ? '#334155' : getFlagBg(homeName) }"></div>
-        <div :style="{ width: (100 - homePct(l)) + '%', background: l.home + l.away === 0 ? '#1e293b' : getFlagBg(awayName) }"></div>
+        <div :style="{ width: homePct(l) + '%', background: l.home + l.away === 0 ? '#334155' : homeColor }"></div>
+        <div :style="{ width: (100 - homePct(l)) + '%', background: l.home + l.away === 0 ? '#1e293b' : awayColor }"></div>
       </div>
+    </div>
+
+    <!-- xG note -->
+    <div v-if="hasXg" style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #1e293b; font-size: 10px; color: #64748b; line-height: 1.5">
+      <strong style="color: #94a3b8">xG (buts attendus)</strong> : nombre de buts qu'une équipe aurait dû marquer compte tenu de la qualité de ses occasions.
     </div>
   </div>
 </template>
