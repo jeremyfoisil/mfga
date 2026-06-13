@@ -13,6 +13,8 @@ const SEASON = 2026
 // API-Football names that differ from our DB names (kept in sync with the other proxies)
 const TEAM_ALIAS: Record<string, string> = {
   'Türkiye': 'Turkey', 'Cape Verde Islands': 'Cape Verde', 'Congo DR': 'DR Congo',
+  // The standings feed spells it "Czechia"; our flag/name map keys on "Czech Republic".
+  'Czechia': 'Czech Republic',
 }
 const norm = (n: string) => TEAM_ALIAS[n] ?? n
 
