@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { sb } from '../../supabase'
-import { getFlagColor } from '../../utils/ui'
+import { teamBarColors } from '../../utils/ui'
 
 interface StatLine { key: string; label: string; home: number; away: number; kind: 'percent' | 'number' }
 
@@ -34,9 +34,11 @@ function homePct(l: StatLine): number {
   const t = l.home + l.away
   return t === 0 ? 50 : Math.round((l.home / t) * 100)
 }
-// Solid team colors for readable bars (flag gradients are unreadable at 6px tall).
-const homeColor = computed(() => getFlagColor(props.homeName))
-const awayColor = computed(() => getFlagColor(props.awayName))
+// Solid, guaranteed-distinct team colors for readable bars (flag gradients are
+// unreadable at 6px tall, and two similar flag colors would be indistinguishable).
+const barColors = computed(() => teamBarColors(props.homeName, props.awayName))
+const homeColor = computed(() => barColors.value[0])
+const awayColor = computed(() => barColors.value[1])
 const hasXg = computed(() => lines.value.some(l => l.key === 'xg'))
 </script>
 
