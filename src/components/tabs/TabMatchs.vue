@@ -118,14 +118,18 @@ function localDateStr(ms: number) {
 }
 const todayStr = computed(() => localDateStr(now.value))
 
+// A match's day in the user's local timezone, derived from its absolute kickoff
+// instant. Comparing local-day to local-day (rather than the stored venue date,
+// which can read "yesterday" for an evening match in the Americas) is what stops
+// late-night matches from being dropped when the local day rolls over at midnight.
+function matchLocalDate(m: import('../../types').Match): string {
+  const ms = matchStartsAtMs(m)
+  return ms === Infinity ? '' : localDateStr(ms)
+}
+
 const liveMatches = computed(() =>
   matchesStore.matches
     .filter(m => m.liveStatus === 'live')
-    .sort((a, b) => matchStartsAtMs(a) - matchStartsAtMs(b))
-)
-const todayMatches = computed(() =>
-  matchesStore.matches
-    .filter(m => m.matchDate === todayStr.value)
     .sort((a, b) => matchStartsAtMs(a) - matchStartsAtMs(b))
 )
 const nextMatch = computed(() =>
@@ -133,7 +137,17 @@ const nextMatch = computed(() =>
     .filter(m => matchStartsAtMs(m) > now.value)
     .sort((a, b) => matchStartsAtMs(a) - matchStartsAtMs(b))[0] || null
 )
-// Live tab content: matches in progress first, else today's programme, else the next match.
+// The user-local day whose programme the Live tab shows when nothing is in
+// progress: the slate of the soonest match still to come. Anchoring on the next
+// match means the evening programme keeps showing tonight's late matches right
+// through midnight instead of zapping them. Falls back to today once the season's over.
+const programmeDay = computed(() => nextMatch.value ? matchLocalDate(nextMatch.value) : todayStr.value)
+const todayMatches = computed(() =>
+  matchesStore.matches
+    .filter(m => matchLocalDate(m) === programmeDay.value)
+    .sort((a, b) => matchStartsAtMs(a) - matchStartsAtMs(b))
+)
+// Live tab content: matches in progress first, else the day's programme, else the next match.
 const liveDisplayMatches = computed(() => {
   if (liveMatches.value.length) return liveMatches.value
   if (todayMatches.value.length) return todayMatches.value
