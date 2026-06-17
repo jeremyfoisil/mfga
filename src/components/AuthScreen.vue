@@ -25,12 +25,8 @@ const isLogin = computed(() => auth.authMode === 'login')
       <div :style="{ background: C.card, border: '1px solid ' + C.border, borderRadius: '14px', padding: '24px 20px', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }">
         <div style="display: flex; gap: 0; margin-bottom: 20px; border-radius: 8px; overflow: hidden; border: 1px solid #1e293b">
           <button @click="auth.authMode = 'login'"
-            :style="{ flex: 1, padding: '10px', border: 'none', cursor: 'pointer', fontFamily: 'Anton, sans-serif', fontSize: '13px', letterSpacing: '1px', background: isLogin ? '#dc2626' : '#1e293b', color: isLogin ? '#fff' : C.muted }">
+            :style="{ flex: 1, padding: '10px', border: 'none', cursor: 'pointer', fontFamily: 'Anton, sans-serif', fontSize: '13px', letterSpacing: '1px', background: '#dc2626', color: '#fff' }">
             SE CONNECTER
-          </button>
-          <button @click="auth.authMode = 'register'"
-            :style="{ flex: 1, padding: '10px', border: 'none', cursor: 'pointer', fontFamily: 'Anton, sans-serif', fontSize: '13px', letterSpacing: '1px', background: !isLogin ? '#1e3a8a' : '#1e293b', color: !isLogin ? '#fff' : C.muted }">
-            S'INSCRIRE
           </button>
         </div>
         <div style="margin-bottom: 14px">
