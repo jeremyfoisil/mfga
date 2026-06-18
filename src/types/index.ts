@@ -42,6 +42,10 @@ export interface Match {
   venue: string
   round: string
   liveStatus: string
+  // Minute en cours d'un match live, récupérée de l'API (null sinon).
+  // liveExtra = temps additionnel éventuel (ex. 45+2').
+  liveMinute: number | null
+  liveExtra: number | null
 }
 
 export interface Participant {

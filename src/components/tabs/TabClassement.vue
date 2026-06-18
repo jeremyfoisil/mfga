@@ -1,185 +1,97 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useParticipantsStore } from '../../stores/participants'
-import { useMatchesStore } from '../../stores/matches'
-import { usePronosticsStore } from '../../stores/pronostics'
-import { useBonusStore } from '../../stores/bonus'
-import { C, sCard, sLabel, medalColors, medalIcons } from '../../constants/ui'
-import { BONUS_TYPES } from '../../constants/bonus'
-import { calcMatchPoints } from '../../utils/match'
-import { initials } from '../../utils/ui'
+import { ref, onMounted } from 'vue'
+import { sb } from '../../supabase'
+import { C } from '../../constants/ui'
+import { getFlag } from '../../utils/ui'
 
-const parts      = useParticipantsStore()
-const matches    = useMatchesStore()
-const pronos     = usePronosticsStore()
-const bonusStore = useBonusStore()
+interface StandingRow { rank: number; team: string; played: number; win: number; draw: number; lose: number; diff: number; points: number }
+interface GroupStanding { group: string; rows: StandingRow[] }
 
-function matchesPlayedCount() {
-  return matches.matches.filter(m => m.result.home !== "" && m.result.away !== "").length
-}
+const loading = ref(true)
+const error = ref<string | null>(null)
+const groups = ref<GroupStanding[]>([])
 
-function calcScore(pid: number) {
-  let total = 0, exactCount = 0, diagCount = 0
-  matches.matches.forEach(m => {
-    if (m.result.home === "" || m.result.away === "") return
-    const pts = calcMatchPoints(pronos.pronostics[pid]?.[m.id], m.result)
-    if (pts === 3) exactCount++
-    else if (pts === 1) diagCount++
-    total += pronos.jokers[pid] === m.id ? pts * 2 : pts
-  })
-  BONUS_TYPES.forEach(b => {
-    for (let i = 0; i < b.count; i++) {
-      const res   = bonusStore.bonusResults[b.id + '_' + i]
-      const prono = bonusStore.bonusPronostics[pid]?.[b.id + '_' + i]
-      if (res && prono && res.toLowerCase().trim() === prono.toLowerCase().trim()) total += b.points
-    }
-  })
-  return { total, exactCount, diagCount }
-}
-
-const rankings = computed(() => {
-  const list = parts.participants.map(p => ({ ...p, ...calcScore(p.id) }))
-    .sort((a, b) => b.total - a.total || b.exactCount - a.exactCount)
-  // Competition ranking: equal points share a rank, the next rank skips (1, 1, 3…).
-  // Display order keeps the exact-count tiebreak, but the rank depends on points only.
-  let lastRank = 0, lastTotal = Number.NaN
-  return list.map((p, i) => {
-    const rank = i > 0 && p.total === lastTotal ? lastRank : i + 1
-    lastRank = rank
-    lastTotal = p.total
-    return { ...p, rank }
-  })
+onMounted(async () => {
+  try {
+    const { data, error: err } = await sb.functions.invoke('standings-proxy')
+    if (err) throw err
+    groups.value = (data as { data: GroupStanding[] }).data ?? []
+  } catch (e) {
+    error.value = (e as Error).message
+  } finally {
+    loading.value = false
+  }
 })
 
-function matchPtsForRanking(pid: number) {
-  let total = 0
-  matches.matches.forEach(m => {
-    if (m.result.home === "" || m.result.away === "") return
-    const pts = calcMatchPoints(pronos.pronostics[pid]?.[m.id], m.result)
-    total += pronos.jokers[pid] === m.id ? pts * 2 : pts
-  })
-  return total
-}
+function fmtDiff(d: number): string { return d > 0 ? '+' + d : String(d) }
 </script>
 
 <template>
-  <div>
-    <!-- Banner -->
-    <div class="card-rel" :style="{ ...sCard, background: 'linear-gradient(135deg, #1e3a8a 0%, #7f1d1d 100%)', marginBottom: '16px', textAlign: 'center', padding: '22px 16px', border: '1px solid #f59e0b66' }">
-      <div style="position: absolute; top: -10px; left: -10px; font-size: 60px; opacity: 0.12">★</div>
-      <div style="position: absolute; bottom: -20px; right: -10px; font-size: 80px; opacity: 0.10">🏆</div>
-      <div style="font-size: 36px; line-height: 1; margin-bottom: 6px">🏆</div>
-      <div class="anton" style="font-size: 22px; color: #fbbf24; letter-spacing: 2px; margin-bottom: 4px">CLASSEMENT GÉNÉRAL</div>
-      <div style="font-size: 11px; color: #fef3c7; letter-spacing: 1px">★ Mis à jour en direct · partagé avec tous ★</div>
-    </div>
+  <!-- Loading -->
+  <div v-if="loading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 0; gap: 14px">
+    <div class="res-spinner"></div>
+    <div style="font-size: 12px; color: #64748b; letter-spacing: 1px; font-family: Anton, sans-serif">CHARGEMENT…</div>
+  </div>
 
-    <div v-if="rankings.length === 0" :style="{ ...sCard, color: C.muted, textAlign: 'center', padding: '40px' }">
-      <div style="font-size: 32px; margin-bottom: 6px">🥁</div>
-      Pas encore de participants.
-    </div>
+  <!-- Error -->
+  <div v-else-if="error" style="text-align: center; padding: 40px; color: #ef4444; font-size: 13px">{{ error }}</div>
 
-    <!-- Podium -->
-    <div v-if="rankings.length >= 2">
-      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px">
-        <div class="ribbon" style="background: linear-gradient(180deg, #f59e0b, #b45309)">PODIUM</div>
-        <div :style="{ fontSize: '11px', color: C.muted }">The Goats</div>
-      </div>
-      <div class="podium">
-        <!-- 2nd -->
-        <div v-if="rankings[1]">
-          <div class="podium-step silver" style="min-height: 110px">
-            <div class="avatar-disc" :style="{ background: 'linear-gradient(135deg, ' + rankings[1].color + ', ' + rankings[1].color + 'cc)', margin: '0 auto 6px' }">{{ initials(rankings[1].name) }}</div>
-            <div class="medal">🥈</div>
-            <div class="p-name">{{ rankings[1].name }}</div>
-            <div class="pts" style="color: #cbd5e1">{{ rankings[1].total }}</div>
-            <div class="lbl">pts</div>
-          </div>
-          <div class="podium-base">{{ rankings[1].rank }}</div>
-        </div>
-        <div v-else></div>
+  <!-- Empty -->
+  <div v-else-if="groups.length === 0" :style="{ background: C.card, border: '1px solid ' + C.border, borderRadius: '12px', padding: '40px 20px', textAlign: 'center', marginTop: '10px' }">
+    <div style="font-size: 13px; font-family: Anton, sans-serif; letter-spacing: 1px; color: #fbbf24">CLASSEMENTS PAS ENCORE DISPONIBLES</div>
+    <div style="font-size: 11px; color: #475569; margin-top: 6px">Ils apparaîtront une fois les matchs de poule joués.</div>
+  </div>
 
-        <!-- 1st -->
-        <div>
-          <div class="podium-step gold" style="min-height: 140px">
-            <div style="position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font-size: 26px">👑</div>
-            <div class="avatar-disc" :style="{ background: 'linear-gradient(135deg, ' + rankings[0].color + ', ' + rankings[0].color + 'cc)', margin: '0 auto 6px', width: '44px', height: '44px', fontSize: '18px' }">{{ initials(rankings[0].name) }}</div>
-            <div class="medal">🥇</div>
-            <div class="p-name" style="font-size: 16px">{{ rankings[0].name }}</div>
-            <div class="pts" style="font-size: 30px; color: #fbbf24">{{ rankings[0].total }}</div>
-            <div class="lbl">points</div>
-          </div>
-          <div class="podium-base" style="background: linear-gradient(180deg, #78350f, #451a03); border-color: #f59e0b; color: #fbbf24">{{ rankings[0].rank }}</div>
-        </div>
-
-        <!-- 3rd -->
-        <div v-if="rankings[2]">
-          <div class="podium-step bronze" style="min-height: 90px">
-            <div class="avatar-disc" :style="{ background: 'linear-gradient(135deg, ' + rankings[2].color + ', ' + rankings[2].color + 'cc)', margin: '0 auto 4px', width: '32px', height: '32px', fontSize: '13px' }">{{ initials(rankings[2].name) }}</div>
-            <div class="medal" style="font-size: 20px">🥉</div>
-            <div class="p-name">{{ rankings[2].name }}</div>
-            <div class="pts" style="font-size: 20px; color: #fb923c">{{ rankings[2].total }}</div>
-            <div class="lbl">pts</div>
-          </div>
-          <div class="podium-base">{{ rankings[2].rank }}</div>
-        </div>
-        <div v-else></div>
-      </div>
-    </div>
-
-    <!-- Solo leader -->
-    <div v-if="rankings.length === 1" class="card-rel" :style="{ ...sCard, background: 'linear-gradient(135deg, #78350f, #1c1507)', border: '1px solid #f59e0b66', padding: '20px', textAlign: 'center' }">
-      <div style="font-size: 36px; margin-bottom: 4px">👑</div>
-      <div class="anton" style="font-size: 18px; color: #fff; margin-bottom: 4px">{{ rankings[0].name }}</div>
-      <div class="anton" style="font-size: 36px; color: #fbbf24; line-height: 1">{{ rankings[0].total }}</div>
-      <div :style="{ fontSize: '10px', color: C.muted, letterSpacing: '1.5px', marginTop: '4px' }">POINTS · GOAT SOLO</div>
-    </div>
-
-    <!-- Positions 4+ -->
-    <div v-if="rankings.length > 3" style="margin-top: 8px">
-      <div :style="sLabel">★ Autres positions</div>
-      <div v-for="(p, i) in rankings.slice(3)" :key="p.id" class="card-rel" :style="{ ...sCard, display: 'flex', alignItems: 'center', gap: '12px', padding: '10px' }">
-        <div class="anton" :style="{ fontSize: '18px', width: '30px', textAlign: 'center', color: C.muted }">#{{ p.rank }}</div>
-        <div class="avatar-disc" :style="{ background: 'linear-gradient(135deg, ' + p.color + ', ' + p.color + 'cc)', width: '30px', height: '30px', fontSize: '12px' }">{{ initials(p.name) }}</div>
-        <div style="flex: 1">
-          <div class="anton" :style="{ fontSize: '14px', color: C.text }">{{ p.name }}</div>
-          <div :style="{ fontSize: '10px', color: C.muted, marginTop: '2px' }">🎯 {{ p.exactCount }} exact{{ p.exactCount > 1 ? 's' : '' }}</div>
-        </div>
-        <div style="text-align: right">
-          <div class="anton" :style="{ fontSize: '20px', color: C.text, lineHeight: 1 }">{{ p.total }}</div>
-          <div :style="{ fontSize: '9px', color: C.muted, letterSpacing: '1px' }">PTS</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Stats table -->
-    <div v-if="rankings.length > 1" :style="{ ...sCard, marginTop: '16px', background: '#0a0e1a', border: '1px solid #1e293b' }">
-      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px">
-        <div class="ribbon" style="background: linear-gradient(180deg, #1e3a8a, #1e293b)">STATS</div>
-        <div :style="{ fontSize: '11px', color: C.muted }">détail par joueur</div>
-      </div>
-      <table style="width: 100%; border-collapse: collapse; font-size: 12px">
+  <!-- Groups -->
+  <template v-else>
+    <div v-for="g in groups" :key="g.group" :style="{ background: C.card, border: '1px solid ' + C.border, borderRadius: '12px', padding: '0', marginTop: '12px', overflow: 'hidden' }">
+      <div style="padding: 10px 14px; border-bottom: 1px solid #1e293b; font-family: Anton, sans-serif; font-size: 13px; letter-spacing: 1.5px; color: #fbbf24">GROUPE {{ g.group }}</div>
+      <table style="width: 100%; border-collapse: collapse">
         <thead>
-          <tr :style="{ color: C.muted }">
-            <th style="text-align: left; padding: 6px; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase">Joueur</th>
-            <th style="text-align: center; padding: 6px; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase">Joués</th>
-            <th style="text-align: center; padding: 6px; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase">✅</th>
-            <th style="text-align: center; padding: 6px; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase">🎯</th>
-            <th style="text-align: right; padding: 6px; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase">Bonus</th>
+          <tr style="font-size: 9px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px">
+            <th style="padding: 6px 4px 6px 10px; text-align: center; width: 22px">#</th>
+            <th style="padding: 6px 4px; text-align: left">Équipe</th>
+            <th style="padding: 6px 4px; text-align: center; width: 24px">J</th>
+            <th style="padding: 6px 4px; text-align: center; width: 24px">G</th>
+            <th style="padding: 6px 4px; text-align: center; width: 24px">N</th>
+            <th style="padding: 6px 4px; text-align: center; width: 24px">P</th>
+            <th style="padding: 6px 4px; text-align: center; width: 34px">Diff</th>
+            <th style="padding: 6px 10px 6px 4px; text-align: center; width: 30px">Pts</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(p, i) in rankings" :key="p.id" :style="{ borderTop: '1px solid ' + C.border }">
-            <td style="padding: 8px 6px; font-weight: 700; font-family: Anton, sans-serif; letter-spacing: 0.5px">
-              <span :style="{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: p.color, marginRight: '6px' }"></span>
-              {{ p.name }}
+          <tr v-for="r in g.rows" :key="r.team"
+            :style="{ borderTop: '1px solid #0f172a', background: r.rank <= 2 ? 'rgba(34,197,94,0.08)' : 'transparent' }">
+            <td style="padding: 8px 4px 8px 10px; text-align: center; position: relative">
+              <span v-if="r.rank <= 2" style="position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: #22c55e"></span>
+              <span style="font-family: Anton, sans-serif; font-size: 12px; color: #94a3b8">{{ r.rank }}</span>
             </td>
-            <td :style="{ textAlign: 'center', padding: '8px 6px', color: C.muted }">{{ matchesPlayedCount() }}</td>
-            <td :style="{ textAlign: 'center', padding: '8px 6px', color: '#60a5fa', fontWeight: 700 }">{{ p.diagCount }}</td>
-            <td :style="{ textAlign: 'center', padding: '8px 6px', color: C.green, fontWeight: 700 }">{{ p.exactCount }}</td>
-            <td :style="{ textAlign: 'right', padding: '8px 6px', color: C.gold, fontWeight: 700 }">{{ (p.total - matchPtsForRanking(p.id)) > 0 ? '+' + (p.total - matchPtsForRanking(p.id)) : '–' }}</td>
+            <td style="padding: 8px 4px">
+              <span style="display: inline-flex; align-items: center; gap: 6px">
+                <span class="flag" style="font-size: 15px">{{ getFlag(r.team) }}</span>
+                <span style="font-size: 12px; font-weight: 700; color: #f8fafc">{{ r.team }}</span>
+              </span>
+            </td>
+            <td style="padding: 8px 4px; text-align: center; font-size: 12px; color: #94a3b8">{{ r.played }}</td>
+            <td style="padding: 8px 4px; text-align: center; font-size: 12px; color: #94a3b8">{{ r.win }}</td>
+            <td style="padding: 8px 4px; text-align: center; font-size: 12px; color: #94a3b8">{{ r.draw }}</td>
+            <td style="padding: 8px 4px; text-align: center; font-size: 12px; color: #94a3b8">{{ r.lose }}</td>
+            <td style="padding: 8px 4px; text-align: center; font-size: 12px; color: #cbd5e1">{{ fmtDiff(r.diff) }}</td>
+            <td style="padding: 8px 10px 8px 4px; text-align: center; font-family: Anton, sans-serif; font-size: 14px; color: #f8fafc">{{ r.points }}</td>
           </tr>
         </tbody>
       </table>
     </div>
-  </div>
+  </template>
 </template>
+
+<style scoped>
+.res-spinner {
+  width: 32px; height: 32px;
+  border: 3px solid #1e293b;
+  border-top-color: #22c55e;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg) } }
+</style>

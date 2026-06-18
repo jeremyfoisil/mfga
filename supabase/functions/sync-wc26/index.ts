@@ -34,7 +34,7 @@ interface Card {
 }
 
 interface ApiFixture {
-  fixture: { id: number; status: { short: string } }
+  fixture: { id: number; status: { short: string; elapsed: number | null; extra: number | null } }
   teams: { home: { id: number; name: string }; away: { id: number; name: string } }
   goals: { home: number | null; away: number | null }
 }
@@ -286,6 +286,11 @@ Deno.serve(async () => {
 
     const status = mapStatus(fx.fixture.status.short)
 
+    // Minute en direct : seulement pour un match live, sinon on remet à NULL
+    // pour ne pas laisser une minute figée sur un match terminé/à venir.
+    const liveMinute = status === 'live' ? (fx.fixture.status.elapsed ?? null) : null
+    const liveExtra  = status === 'live' ? (fx.fixture.status.extra ?? null) : null
+
     // Orientation: our home_team may be the API away team (matched by sorted pair)
     const flipped = norm(fx.teams.home.name) !== db.home_team
 
@@ -295,10 +300,12 @@ Deno.serve(async () => {
         live_status: status,
         result_home: flipped ? fx.goals.away : fx.goals.home,
         result_away: flipped ? fx.goals.home : fx.goals.away,
+        live_minute: liveMinute,
+        live_extra: liveExtra,
       })
     } else {
       // No API result yet → never touch result columns (preserves manual entries)
-      baseNoResult.push({ id: fx.fixture.id, live_status: status })
+      baseNoResult.push({ id: fx.fixture.id, live_status: status, live_minute: liveMinute, live_extra: liveExtra })
     }
 
     // Fetch events (goals + cards) when live, or to backfill a match not yet detailed

@@ -83,10 +83,30 @@ function isJokerMatch(pid: number | null, mid: number) { return pid !== null && 
 
 function hasMatchStarted(m: import('../../types').Match) { return now.value >= matchStartsAtMs(m) }
 
+// Minute en cours d'un match live, depuis l'API (ex. "42'" ou "45+2'").
+function liveMinuteLabel(m: import('../../types').Match): string {
+  if (m.liveStatus !== 'live' || m.liveMinute == null) return ''
+  return m.liveExtra != null ? `${m.liveMinute}+${m.liveExtra}'` : `${m.liveMinute}'`
+}
+
 function canEditMatchProno(matchId: number) {
   const m = matchesStore.matches.find(x => x.id === matchId)
   if (!m) return false
   return !hasMatchStarted(m)
+}
+
+// Le joker est consommé définitivement dès que le match sur lequel il est posé
+// a débuté : on ne peut alors plus le retirer ni le reposer ailleurs.
+function isJokerLocked(pid: number | null) {
+  if (pid === null) return false
+  const jokerMatchId = pronos.jokers[pid]
+  if (jokerMatchId == null) return false
+  const m = matchesStore.matches.find(x => x.id === jokerMatchId)
+  return !!m && hasMatchStarted(m)
+}
+
+function canToggleJoker(matchId: number) {
+  return canEditMatchProno(matchId) && !isJokerLocked(activeParticipant.value)
 }
 
 function activeParticipantName() {
@@ -211,6 +231,8 @@ function setProno(pid: number | null, matchId: number, side: 'home' | 'away', va
 }
 function toggleJoker(pid: number | null, matchId: number) {
   if (pid === null) return
+  // Joker déjà consommé sur un match débuté : interdit de le déplacer.
+  if (isJokerLocked(pid) && pronos.jokers[pid] !== matchId) return
   pronos.toggleJoker(pid, matchId, pronos.pronostics[pid]?.[matchId])
 }
 </script>
@@ -390,6 +412,7 @@ function toggleJoker(pid: number | null, matchId: number) {
                   <span :class="(m.liveStatus === 'live' || (m.result.home !== '' && m.result.away !== '')) ? 'live-dot' : ''"
                     :style="{ width: '6px', height: '6px', borderRadius: '50%', background: m.liveStatus === 'live' ? '#ef4444' : (m.result.home !== '' && m.result.away !== '' ? '#22c55e' : '#475569') }"></span>
                   <span :style="{ fontSize: '9px', color: m.liveStatus === 'live' ? '#fca5a5' : (m.result.home !== '' && m.result.away !== '' ? '#22c55e' : '#475569'), fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase' }">{{ m.liveStatus === 'live' ? 'Score en direct' : 'Résultat' }}</span>
+                  <span v-if="liveMinuteLabel(m)" style="font-size: 11px; font-weight: 700; color: #fff; padding-left: 5px; border-left: 1px solid rgba(239,68,68,0.4)">⏱ {{ liveMinuteLabel(m) }}</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 6px; justify-content: center">
                   <div class="score-led-ro" :style="{ color: m.result.home !== '' ? (m.liveStatus === 'live' ? '#fca5a5' : '#fbbf24') : '#334155' }">{{ m.result.home !== '' ? m.result.home : '–' }}</div>
@@ -416,12 +439,13 @@ function toggleJoker(pid: number | null, matchId: number) {
 
             <!-- Footer: joker + pts -->
             <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed ' + C.border }">
-              <button v-if="canEditMatchProno(m.id)"
+              <button v-if="canToggleJoker(m.id)"
                 :style="{ background: isJokerMatch(activeParticipant, m.id) ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'transparent', color: isJokerMatch(activeParticipant, m.id) ? '#0a0e1a' : '#94a3b8', border: '1px solid ' + (isJokerMatch(activeParticipant, m.id) ? '#f59e0b' : C.border), borderRadius: '999px', padding: '5px 12px', cursor: 'pointer', fontFamily: 'Anton, sans-serif', fontSize: '11px', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '4px' }"
                 @click="toggleJoker(activeParticipant, m.id)">
                 🃏 {{ isJokerMatch(activeParticipant, m.id) ? 'RETIRER JOKER' : 'POSER LE JOKER' }}
               </button>
-              <div v-else></div>
+              <div v-else-if="isJokerLocked(activeParticipant) && canEditMatchProno(m.id)" style="font-size: 10px; color: #64748b; font-family: Anton, sans-serif; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px">🃏 Joker déjà utilisé</div>
+          <div v-else></div>
               <div v-if="m.result.home !== '' && m.result.away !== ''" style="display: flex; align-items: center; gap: 8px">
                 <span v-if="m.liveStatus === 'live'" style="font-size: 10px; color: #fca5a5; font-family: Anton, sans-serif; letter-spacing: 0.5px">PROVISOIRE</span>
                 <span v-if="getMatchPts(activeParticipant, m.id) === 3" style="font-size: 18px">🎯</span>
@@ -576,11 +600,12 @@ function toggleJoker(pid: number | null, matchId: number) {
 
         <!-- Footer KO -->
         <div v-if="m.homeKnown && m.awayKnown" :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed ' + C.border }">
-          <button v-if="canEditMatchProno(m.id)"
+          <button v-if="canToggleJoker(m.id)"
             :style="{ background: isJokerMatch(activeParticipant, m.id) ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'transparent', color: isJokerMatch(activeParticipant, m.id) ? '#0a0e1a' : '#94a3b8', border: '1px solid ' + (isJokerMatch(activeParticipant, m.id) ? '#f59e0b' : C.border), borderRadius: '999px', padding: '5px 12px', cursor: 'pointer', fontFamily: 'Anton, sans-serif', fontSize: '11px', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '4px' }"
             @click="toggleJoker(activeParticipant, m.id)">
             🃏 {{ isJokerMatch(activeParticipant, m.id) ? 'RETIRER JOKER' : 'POSER LE JOKER' }}
           </button>
+          <div v-else-if="isJokerLocked(activeParticipant) && canEditMatchProno(m.id)" style="font-size: 10px; color: #64748b; font-family: Anton, sans-serif; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px">🃏 Joker déjà utilisé</div>
           <div v-else></div>
           <div v-if="m.result.home !== '' && m.result.away !== ''" style="display: flex; align-items: center; gap: 8px">
             <span v-if="getMatchPts(activeParticipant, m.id) === 3" style="font-size: 18px">🎯</span>
@@ -731,11 +756,12 @@ Giroud, 45"
 
         <!-- Footer: joker + result pts -->
         <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed ' + C.border }">
-          <button v-if="canEditMatchProno(m.id)"
+          <button v-if="canToggleJoker(m.id)"
             :style="{ background: isJokerMatch(activeParticipant, m.id) ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'transparent', color: isJokerMatch(activeParticipant, m.id) ? '#0a0e1a' : '#94a3b8', border: '1px solid ' + (isJokerMatch(activeParticipant, m.id) ? '#f59e0b' : C.border), borderRadius: '999px', padding: '5px 12px', cursor: 'pointer', fontFamily: 'Anton, sans-serif', fontSize: '11px', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '4px' }"
             @click="toggleJoker(activeParticipant, m.id)">
             🃏 {{ isJokerMatch(activeParticipant, m.id) ? 'RETIRER JOKER' : 'POSER LE JOKER' }}
           </button>
+          <div v-else-if="isJokerLocked(activeParticipant) && canEditMatchProno(m.id)" style="font-size: 10px; color: #64748b; font-family: Anton, sans-serif; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px">🃏 Joker déjà utilisé</div>
           <div v-else></div>
           <div v-if="m.result.home !== '' && m.result.away !== ''" style="display: flex; align-items: center; gap: 8px">
             <span v-if="getMatchPts(activeParticipant, m.id) === 3" style="font-size: 18px">🎯</span>

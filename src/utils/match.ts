@@ -41,6 +41,8 @@ export function mapMatchRow(r: Record<string, unknown>): Match {
     venue:     (r.venue as string) || "",
     round:     (r.round as string) || "",
     liveStatus: (r.live_status as string) || "scheduled",
+    liveMinute: r.live_minute !== null && r.live_minute !== undefined ? Number(r.live_minute) : null,
+    liveExtra:  r.live_extra  !== null && r.live_extra  !== undefined ? Number(r.live_extra)  : null,
   }
 }
 
