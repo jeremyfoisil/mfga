@@ -11,6 +11,8 @@ const TEAM_ALIAS: Record<string, string> = {
   'Türkiye': 'Turkey',
   'Cape Verde Islands': 'Cape Verde',
   'Congo DR': 'DR Congo',
+  // API-Football spells it "Czechia"; our DB keys on "Czech Republic".
+  'Czechia': 'Czech Republic',
 }
 const norm = (n: string) => TEAM_ALIAS[n] ?? n
 
