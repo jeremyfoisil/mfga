@@ -34,11 +34,23 @@ const polygon = computed(() =>
 const vertices = computed(() =>
   props.axes.map((a, i) => point(i, norm(a.value))))
 
+// Intitulés d'axes, juste à l'extérieur de l'anneau le plus large.
 const labels = computed(() => props.axes.map((a, i) => {
-  const p = point(i, 1.2)
+  const p = point(i, 1.34)
   const u = unit(i)
   const anchor = Math.abs(u.x) < 0.3 ? 'middle' : (u.x > 0 ? 'start' : 'end')
-  return { x: p.x, y: p.y, anchor, label: a.label, value: a.value }
+  return { x: p.x, y: p.y, anchor, label: a.label }
+}))
+
+// Score chiffré, posé juste au-delà du sommet de données (donc loin de
+// l'intitulé), coloré du rouge (faible) au vert (élevé) selon la valeur.
+const valueColor = (v: number) =>
+  `hsl(${Math.round(Math.max(0, Math.min(100, v)) / 100 * 130)}, 70%, 60%)`
+
+const values = computed(() => props.axes.map((a, i) => {
+  const v = point(i, norm(a.value))
+  const u = unit(i)
+  return { x: v.x + u.x * 9, y: v.y + u.y * 9, value: a.value, color: valueColor(a.value) }
 }))
 </script>
 
@@ -53,11 +65,13 @@ const labels = computed(() => props.axes.map((a, i) => {
     <polygon :points="polygon" fill="#3b82f6" fill-opacity="0.25" stroke="#3b82f6" stroke-width="2" stroke-linejoin="round" />
     <!-- sommets -->
     <circle v-for="(v, i) in vertices" :key="'v' + i" :cx="v.x" :cy="v.y" r="2.5" fill="#3b82f6" />
+    <!-- scores chiffrés (rouge → vert selon la valeur), près des sommets -->
+    <text v-for="(val, i) in values" :key="'n' + i" :x="val.x" :y="val.y" text-anchor="middle"
+      dominant-baseline="middle" font-size="11" font-weight="700" :fill="val.color"
+      style="font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">{{ val.value }}</text>
     <!-- labels d'axes -->
     <text v-for="(l, i) in labels" :key="'l' + i" :x="l.x" :y="l.y" :text-anchor="l.anchor"
       dominant-baseline="middle" font-size="11" fill="#cbd5e1"
-      style="font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
-      {{ l.label }}<tspan font-size="10" fill="#64748b"> {{ l.value }}</tspan>
-    </text>
+      style="font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">{{ l.label }}</text>
   </svg>
 </template>

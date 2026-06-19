@@ -24,7 +24,7 @@ interface ApiStat {
   league: { id: number }
   games: { appearences: number | null; lineups: number | null; minutes: number | null; position: string | null; rating: string | null }
   shots: { total: number | null; on: number | null }
-  goals: { total: number | null; assists: number | null }
+  goals: { total: number | null; conceded: number | null; assists: number | null; saves: number | null }
   passes: { total: number | null; key: number | null; accuracy: number | null }
   tackles: { total: number | null; blocks: number | null; interceptions: number | null }
   duels: { total: number | null; won: number | null }
@@ -89,6 +89,8 @@ Deno.serve(async (req) => {
       shotsOn: stat.shots?.on ?? null,
       goals: stat.goals?.total ?? 0,
       assists: stat.goals?.assists ?? 0,
+      conceded: stat.goals?.conceded ?? null,
+      saves: stat.goals?.saves ?? null,
       passesTotal: stat.passes?.total ?? null,
       passesKey: stat.passes?.key ?? null,
       passesAccuracy: stat.passes?.accuracy ?? null,

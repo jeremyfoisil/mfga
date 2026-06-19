@@ -17,6 +17,7 @@ interface PlayerStats {
   stats: {
     appearances: number; lineups: number; minutes: number; position: string; rating: string | null
     shotsTotal: number | null; shotsOn: number | null; goals: number; assists: number
+    conceded: number | null; saves: number | null
     passesTotal: number | null; passesKey: number | null; passesAccuracy: number | null
     dribblesAttempts: number | null; dribblesSuccess: number | null
     tacklesTotal: number | null; interceptions: number | null; blocks: number | null
@@ -104,6 +105,7 @@ function sections(s: PlayerStats['stats']): { label: string; icon: string; rows:
     { label: 'Défense', icon: '🛡️', rows: [
       ['Tacles', fmt(s.tacklesTotal)], ['Interceptions', fmt(s.interceptions)],
       ['Contres', fmt(s.blocks)], ['Duels', fmt(s.duelsTotal)], ['Duels gagnés', fmt(s.duelsWon)],
+      ['Arrêts', fmt(s.saves)], ['Buts encaissés', fmt(s.conceded)],
     ] },
     { label: 'Discipline', icon: '🟨', rows: [
       ['Fautes subies', fmt(s.foulsDrawn)], ['Fautes commises', fmt(s.foulsCommitted)],
