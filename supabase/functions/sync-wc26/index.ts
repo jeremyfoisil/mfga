@@ -1,7 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "jsr:@supabase/supabase-js@2"
 
-const APISPORTS_KEY = Deno.env.get('APISPORTS_KEY') ?? '872ee48ce93458599691cffe5e72ed01'
+const APISPORTS_KEY = Deno.env.get('APISPORTS_KEY')
+if (!APISPORTS_KEY) throw new Error('APISPORTS_KEY environment secret is not set')
 const API_HOST = 'v3.football.api-sports.io'
 const LEAGUE = 1      // FIFA World Cup
 const SEASON = 2026

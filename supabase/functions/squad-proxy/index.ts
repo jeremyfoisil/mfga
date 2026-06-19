@@ -5,7 +5,8 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const APISPORTS_KEY = Deno.env.get('APISPORTS_KEY') ?? '872ee48ce93458599691cffe5e72ed01'
+const APISPORTS_KEY = Deno.env.get('APISPORTS_KEY')
+if (!APISPORTS_KEY) throw new Error('APISPORTS_KEY environment secret is not set')
 const API_HOST = 'v3.football.api-sports.io'
 
 type Position = 'GK' | 'DEF' | 'MID' | 'FWD'
