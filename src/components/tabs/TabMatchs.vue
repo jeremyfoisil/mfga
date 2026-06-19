@@ -9,6 +9,7 @@ import { C, sCard, sInput, sLabel, KO_STAGES, GROUP_IDS } from '../../constants/
 import { calcMatchPoints, matchStartsAtMs, formatDate, formatMatchTime } from '../../utils/match'
 import { getFlag, getFlagBg, initials } from '../../utils/ui'
 import LineupModal, { type LineupData } from '../modals/LineupModal.vue'
+import MatchOdds from '../ui/MatchOdds.vue'
 import type { Goal, Card } from '../../types'
 import { sb } from '../../supabase'
 
@@ -383,6 +384,8 @@ function toggleJoker(pid: number | null, matchId: number) {
               </div>
             </div>
 
+            <MatchOdds :match="m" />
+
             <!-- Pronostic + résultat -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
               <!-- Pronostic panel -->
@@ -517,6 +520,8 @@ function toggleJoker(pid: number | null, matchId: number) {
             <span class="name" :style="{ color: m.awayKnown ? '#fff' : '#f59e0b' }">{{ m.away }}</span>
           </div>
         </div>
+
+        <MatchOdds :match="m" />
 
         <!-- Pronostic + résultat (seulement si les deux équipes sont connues) -->
         <div v-if="m.homeKnown && m.awayKnown" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
@@ -668,6 +673,8 @@ function toggleJoker(pid: number | null, matchId: number) {
             <span class="name">{{ m.away }}</span>
           </div>
         </div>
+
+        <MatchOdds :match="m" />
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
           <!-- Pronostic panel -->
