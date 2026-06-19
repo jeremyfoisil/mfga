@@ -110,7 +110,7 @@ async function fetchEvents(fixtureId: number, homeTeamId: number): Promise<Event
 // ── Player-stats aggregation ──────────────────────────────────────────
 // Match events to players by API-Football player id (exact). Fallback to
 // accent-insensitive last name + team for manual admin entries without ids.
-const stripAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '')
+const stripAccents = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 function lastKey(name: string): string {
   const parts = name.trim().split(/\s+/)
   const last = parts.length === 1 ? parts[0] : parts.slice(1).join(' ')
