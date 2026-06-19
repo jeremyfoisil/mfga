@@ -32,7 +32,7 @@ const polygon = computed(() =>
   toPoints(props.axes.map((a, i) => point(i, norm(a.value)))))
 
 const vertices = computed(() =>
-  props.axes.map((a, i) => ({ ...point(i, norm(a.value)) })))
+  props.axes.map((a, i) => point(i, norm(a.value))))
 
 const labels = computed(() => props.axes.map((a, i) => {
   const p = point(i, 1.2)
