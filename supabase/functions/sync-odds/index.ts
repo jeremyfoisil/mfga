@@ -59,6 +59,7 @@ Deno.serve(async () => {
 
   // 3. Cotes paginées (filtrées bookmaker + bet côté API)
   const rows: Record<string, unknown>[] = []
+  let skippedUnknownOrientation = 0
   let page = 1
   let totalPages = 1
   do {
@@ -75,7 +76,8 @@ Deno.serve(async () => {
       const id = entry.fixture.id
       if (!homeById.has(id)) continue // fixture inconnu de notre DB
 
-      const bet = entry.bookmakers?.[0]?.bets?.[0]
+      const bm = entry.bookmakers?.find(b => b.id === BOOKMAKER)
+      const bet = bm?.bets?.find(b => b.id === BET)
       if (!bet?.values?.length) continue
 
       const find = (v: string) => bet.values.find(x => x.value === v)?.odd
@@ -85,7 +87,9 @@ Deno.serve(async () => {
       // N'écrire que si les trois cotes sont valides (jamais de NULL involontaire)
       if (!Number.isFinite(home) || !Number.isFinite(draw) || !Number.isFinite(away)) continue
 
-      const flipped = apiHomeById.get(id) !== undefined && apiHomeById.get(id) !== homeById.get(id)
+      const apiHome = apiHomeById.get(id)
+      if (apiHome === undefined) { skippedUnknownOrientation++; continue } // orientation inconnue : ne pas risquer une mauvaise orientation
+      const flipped = apiHome !== homeById.get(id)
       rows.push({
         id,
         odds_home: flipped ? away : home,
@@ -106,7 +110,7 @@ Deno.serve(async () => {
     }
   }
 
-  return new Response(JSON.stringify({ synced: rows.length }), {
+  return new Response(JSON.stringify({ synced: rows.length, skippedUnknownOrientation }), {
     headers: { 'Content-Type': 'application/json' },
   })
 })
