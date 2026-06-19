@@ -30,11 +30,9 @@ function onInput(e: Event) {
 }
 
 async function search() {
-  const { data } = await sb.from('players')
-    .select('name, team, api_id')
-    .ilike('name', `%${query.value}%`)
-    .order('name')
-    .limit(8)
+  // Accent- and case-insensitive search via the unaccent-backed RPC, so
+  // "tchouameni" matches "Tchouaméni".
+  const { data } = await sb.rpc('search_players', { q: query.value })
   results.value = (data ?? []) as PlayerRow[]
   open.value = results.value.length > 0
   loading.value = false
