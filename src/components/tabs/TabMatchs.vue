@@ -319,8 +319,16 @@ function toggleJoker(pid: number | null, matchId: number) {
         <span>{{ admin.scheduleLoading ? '⏳' : '📅' }}</span>
         {{ admin.scheduleLoading ? 'SYNC…' : 'SYNC HORAIRES' }}
       </button>
+      <button
+        :disabled="admin.oddsLoading"
+        :style="{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: 'linear-gradient(135deg, #0f172a, #1e293b)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: '8px', cursor: admin.oddsLoading ? 'not-allowed' : 'pointer', fontFamily: 'Anton, sans-serif', fontSize: '11px', letterSpacing: '1px', color: '#f59e0b', opacity: admin.oddsLoading ? 0.6 : 1 }"
+        @click="admin.syncOdds()">
+        <span>{{ admin.oddsLoading ? '⏳' : '💰' }}</span>
+        {{ admin.oddsLoading ? 'SYNC…' : 'SYNC COTES' }}
+      </button>
       <span v-if="admin.syncMsg" style="font-size: 11px; color: #22c55e">{{ admin.syncMsg }}</span>
       <span v-if="admin.scheduleMsg" style="font-size: 11px; color: #60a5fa">{{ admin.scheduleMsg }}</span>
+      <span v-if="admin.oddsMsg" style="font-size: 11px; color: #f59e0b">{{ admin.oddsMsg }}</span>
     </div>
 
     <!-- ══ LIVE MODE ══ -->

@@ -134,5 +134,29 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
-  return { isAdmin, showAdminModal, adminPassInput, adminPassError, showImportModal, importJsonText, importStatus, importLoading, openAdminModal, closeAdminModal, submitAdminPass, exitAdmin, importJson, scheduleLoading, scheduleMsg, syncSchedule, syncLoading, syncMsg, syncFromApi }
+  const oddsLoading = ref(false)
+  const oddsMsg     = ref('')
+  let oddsMsgTimer: ReturnType<typeof setTimeout> | null = null
+
+  async function syncOdds() {
+    const matchesStore = useMatchesStore()
+    oddsLoading.value = true
+    oddsMsg.value = ''
+    try {
+      const { data, error } = await sb.functions.invoke('sync-odds')
+      if (error) throw error
+      const result = data as { synced: number }
+      oddsMsg.value = `✓ ${result.synced} cote(s) synchronisée(s)`
+      const { data: mData } = await sb.from('matches').select('*').order('id')
+      matchesStore.matches = (mData || []).map(mapMatchRow)
+    } catch (e) {
+      oddsMsg.value = '✗ ' + (e as Error).message
+    } finally {
+      oddsLoading.value = false
+      if (oddsMsgTimer) clearTimeout(oddsMsgTimer)
+      oddsMsgTimer = setTimeout(() => { oddsMsg.value = '' }, 3000)
+    }
+  }
+
+  return { isAdmin, showAdminModal, adminPassInput, adminPassError, showImportModal, importJsonText, importStatus, importLoading, openAdminModal, closeAdminModal, submitAdminPass, exitAdmin, importJson, scheduleLoading, scheduleMsg, syncSchedule, syncLoading, syncMsg, syncFromApi, oddsLoading, oddsMsg, syncOdds }
 })
