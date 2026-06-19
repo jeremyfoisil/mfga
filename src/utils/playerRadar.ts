@@ -19,6 +19,9 @@ export interface RadarStats {
   blocks: number | null
   duelsTotal: number | null
   duelsWon: number | null
+  conceded: number | null
+  saves: number | null
+  position: string
   appearances: number
   lineups: number
 }
@@ -30,6 +33,7 @@ const REF = {
   passesP90: 70, keyPassesP90: 2, dribblesP90: 2,
   tacklesP90: 3.5, interceptionsP90: 2, blocksP90: 1,
   duelsWonP90: 8, minutes: 270,
+  savesP90: 4, concededP90: 2.5,
 }
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
@@ -56,6 +60,21 @@ export function radarAxes(s: RadarStats): RadarAxis[] {
   const winRate = s.duelsTotal && s.duelsTotal > 0 ? (s.duelsWon ?? 0) / s.duelsTotal : null
   const starter = s.appearances > 0 ? s.lineups / s.appearances : null
 
+  // Défense : tacles/interceptions/contres pour tous, plus les métriques de
+  // gardien. Les arrêts sont nuls pour un joueur de champ (donc ignorés). Les
+  // buts encaissés ne comptent que pour un gardien (sinon le 0 d'un joueur de
+  // champ gonflerait l'axe) et sont inversés : moins on encaisse, mieux c'est.
+  const defenseSubs: Sub[] = [
+    sub(p90(s.tacklesTotal), REF.tacklesP90),
+    sub(p90(s.interceptions), REF.interceptionsP90),
+    sub(p90(s.blocks), REF.blocksP90),
+    sub(p90(s.saves), REF.savesP90),
+  ]
+  if (s.position === 'Goalkeeper') {
+    const concededP90 = p90(s.conceded)
+    defenseSubs.push(concededP90 == null ? null : clamp01(1 - concededP90 / REF.concededP90))
+  }
+
   return [
     { label: 'Note', value: axisScore([sub(rating, 10)]) },
     { label: 'Attaque', value: axisScore([
@@ -69,11 +88,7 @@ export function radarAxes(s: RadarStats): RadarAxis[] {
       sub(p90(s.passesKey), REF.keyPassesP90),
       sub(p90(s.dribblesSuccess), REF.dribblesP90),
     ]) },
-    { label: 'Défense', value: axisScore([
-      sub(p90(s.tacklesTotal), REF.tacklesP90),
-      sub(p90(s.interceptions), REF.interceptionsP90),
-      sub(p90(s.blocks), REF.blocksP90),
-    ]) },
+    { label: 'Défense', value: axisScore(defenseSubs) },
     { label: 'Duels', value: axisScore([
       sub(p90(s.duelsWon), REF.duelsWonP90),
       sub(winRate, 1),
