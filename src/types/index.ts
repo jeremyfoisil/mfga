@@ -46,6 +46,10 @@ export interface Match {
   // liveExtra = temps additionnel éventuel (ex. 45+2').
   liveMinute: number | null
   liveExtra: number | null
+  // Cotes Unibet "vainqueur du match" (1/N/2), orientées DB. null si indisponible.
+  oddsHome: number | null
+  oddsDraw: number | null
+  oddsAway: number | null
 }
 
 export interface Participant {

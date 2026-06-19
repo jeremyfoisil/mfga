@@ -43,6 +43,9 @@ export function mapMatchRow(r: Record<string, unknown>): Match {
     liveStatus: (r.live_status as string) || "scheduled",
     liveMinute: r.live_minute !== null && r.live_minute !== undefined ? Number(r.live_minute) : null,
     liveExtra:  r.live_extra  !== null && r.live_extra  !== undefined ? Number(r.live_extra)  : null,
+    oddsHome: r.odds_home !== null && r.odds_home !== undefined ? Number(r.odds_home) : null,
+    oddsDraw: r.odds_draw !== null && r.odds_draw !== undefined ? Number(r.odds_draw) : null,
+    oddsAway: r.odds_away !== null && r.odds_away !== undefined ? Number(r.odds_away) : null,
   }
 }
 
