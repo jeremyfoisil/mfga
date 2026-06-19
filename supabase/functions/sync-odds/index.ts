@@ -38,7 +38,7 @@ Deno.serve(async () => {
 
   // 1. Nos matchs : id + home_team pour l'orientation
   const { data: dbMatches, error: dbErr } = await supabase
-    .from('matches').select('id, home_team')
+    .from('matches').select('id, home_team').limit(2000)
   if (dbErr) {
     return new Response(JSON.stringify({ error: dbErr.message }), {
       status: 500, headers: { 'Content-Type': 'application/json' },
