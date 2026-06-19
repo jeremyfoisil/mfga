@@ -48,7 +48,7 @@ async function onSelect(p: SelectedPlayer) {
     cache.set(p.api_id, stats)
     data.value = stats
   } catch (e) {
-    error.value = (e as Error).message
+    error.value = (e as Error).message || 'Erreur réseau — réessaie.'
     data.value = null
   } finally {
     loading.value = false
@@ -141,9 +141,9 @@ function sections(s: PlayerStats['stats']): { label: string; icon: string; rows:
             <span style="font-family: Anton, sans-serif; font-size: 14px; color: #f8fafc; letter-spacing: 1px">{{ sec.label.toUpperCase() }}</span>
           </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px">
-            <div v-for="row in sec.rows" :key="row[0]" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 4px">
-              <span style="font-size: 12px; color: #94a3b8">{{ row[0] }}</span>
-              <span style="font-size: 13px; color: #f1f5f9; font-family: Anton, sans-serif">{{ row[1] }}</span>
+            <div v-for="row in sec.rows" :key="row[0]" class="stat-row">
+              <span class="stat-label">{{ row[0] }}</span>
+              <span class="stat-val">{{ row[1] }}</span>
             </div>
           </div>
         </div>
@@ -161,4 +161,20 @@ function sections(s: PlayerStats['stats']): { label: string; icon: string; rows:
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg) } }
+
+/* Stat rows: a plain, highly legible font for labels and figures —
+   easier to read than the condensed Anton display face used for titles. */
+.stat-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px; border-bottom: 1px solid #1e293b; padding-bottom: 5px;
+}
+.stat-label {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px; color: #cbd5e1;
+}
+.stat-val {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700; font-size: 16px; color: #f8fafc;
+  font-variant-numeric: tabular-nums; letter-spacing: 0.2px;
+}
 </style>
