@@ -13,8 +13,10 @@ const SEASON = 2026
 
 interface ApiPlayer {
   player: {
-    name: string; age: number | null; nationality: string | null
+    name: string; firstname: string | null; lastname: string | null
+    age: number | null; nationality: string | null
     height: string | null; weight: string | null; injured: boolean; photo: string | null
+    birth: { date: string | null; place: string | null; country: string | null }
   }
   statistics: ApiStat[]
 }
@@ -63,11 +65,18 @@ Deno.serve(async (req) => {
   const data = {
     profile: {
       name: api.player.name,
+      firstname: api.player.firstname,
+      lastname: api.player.lastname,
       photo: api.player.photo,
       age: api.player.age,
       nationality: api.player.nationality,
       height: api.player.height,
       weight: api.player.weight,
+      birth: {
+        date: api.player.birth?.date ?? null,
+        place: api.player.birth?.place ?? null,
+        country: api.player.birth?.country ?? null,
+      },
       injured: api.player.injured,
     },
     stats: {

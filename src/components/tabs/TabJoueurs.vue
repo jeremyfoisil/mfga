@@ -7,8 +7,10 @@ import PlayerSearch from '../ui/PlayerSearch.vue'
 
 interface PlayerStats {
   profile: {
-    name: string; photo: string | null; age: number | null
-    nationality: string | null; height: string | null; weight: string | null; injured: boolean
+    name: string; firstname: string | null; lastname: string | null
+    photo: string | null; age: number | null; nationality: string | null
+    height: string | null; weight: string | null; injured: boolean
+    birth: { date: string | null; place: string | null; country: string | null }
   }
   stats: {
     appearances: number; lineups: number; minutes: number; position: string; rating: string | null
@@ -58,6 +60,29 @@ async function onSelect(p: SelectedPlayer) {
 const fmt = (v: number | string | null) => v === null || v === '' ? '—' : String(v)
 const pct = (v: number | null) => v === null ? '—' : v + '%'
 const posFr = (p: string) => POSITION_FR[p] ?? (p || '—')
+
+const fullName = (p: PlayerStats['profile']) => [p.firstname, p.lastname].filter(Boolean).join(' ')
+
+// "2000-01-27" -> "27/01/2000"
+function fmtBirthDate(d: string | null): string {
+  if (!d) return ''
+  const [y, m, day] = d.split('-')
+  return y && m && day ? `${day}/${m}/${y}` : d
+}
+
+// "Né le 27/01/2000 à Rouen (France)" — skips whatever the API omits
+function birthLine(b: PlayerStats['profile']['birth']): string {
+  if (!b || (!b.date && !b.place)) return ''
+  let s = b.date ? `Né le ${fmtBirthDate(b.date)}` : 'Né'
+  if (b.place) s += ` à ${b.place}`
+  if (b.country) s += ` (${b.country})`
+  return s
+}
+
+// API gives bare "187"/"81" with no unit — append one when the value is numeric
+const withUnit = (v: string | null, unit: string) => v ? (/\d$/.test(v.trim()) ? `${v} ${unit}` : v) : ''
+const measureLine = (p: PlayerStats['profile']) =>
+  [withUnit(p.height, 'cm'), withUnit(p.weight, 'kg')].filter(Boolean).join(' · ')
 
 function sections(s: PlayerStats['stats']): { label: string; icon: string; rows: [string, string][] }[] {
   return [
@@ -110,10 +135,13 @@ function sections(s: PlayerStats['stats']): { label: string; icon: string; rows:
         <div v-else style="width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; background: #0a0e1a; border: 2px solid #1e293b">👤</div>
         <div style="min-width: 0">
           <div style="font-family: Anton, sans-serif; font-size: 20px; color: #f8fafc; letter-spacing: 0.5px">{{ data?.profile.name ?? selected.name }}</div>
-          <div style="font-size: 12px; color: #94a3b8; margin-top: 2px">
+          <div v-if="data && fullName(data.profile)" class="hdr-line" style="color: #cbd5e1; font-weight: 600">{{ fullName(data.profile) }}</div>
+          <div class="hdr-line" style="color: #94a3b8; margin-top: 3px">
             <span class="flag">{{ getFlag(selected.team) }}</span> {{ selected.team }}
             <template v-if="data?.profile.age"> · {{ data.profile.age }} ans</template>
           </div>
+          <div v-if="data && birthLine(data.profile.birth)" class="hdr-line hdr-sub">{{ birthLine(data.profile.birth) }}</div>
+          <div v-if="data && measureLine(data.profile)" class="hdr-line hdr-sub">{{ measureLine(data.profile) }}</div>
           <div v-if="data?.profile.injured" style="font-size: 11px; color: #ef4444; margin-top: 4px; font-weight: 600">⚠ Blessé</div>
         </div>
       </div>
@@ -161,6 +189,14 @@ function sections(s: PlayerStats['stats']): { label: string; icon: string; rows:
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg) } }
+
+/* Header identity lines (full name, birth, measurements) — same legible
+   system font as the stat rows. */
+.hdr-line {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 12px;
+}
+.hdr-sub { font-size: 11px; color: #94a3b8; margin-top: 3px; }
 
 /* Stat rows: a plain, highly legible font for labels and figures —
    easier to read than the condensed Anton display face used for titles. */
