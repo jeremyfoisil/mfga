@@ -4,6 +4,8 @@ import { sb } from '../../supabase'
 import { sCard } from '../../constants/ui'
 import { getFlag } from '../../utils/ui'
 import PlayerSearch from '../ui/PlayerSearch.vue'
+import PlayerRadar from '../ui/PlayerRadar.vue'
+import { radarAxes } from '../../utils/playerRadar'
 
 interface PlayerStats {
   profile: {
@@ -163,6 +165,15 @@ function sections(s: PlayerStats['stats']): { label: string; icon: string; rows:
 
       <!-- stats -->
       <template v-else>
+        <!-- radar de synthèse -->
+        <div :style="sCard">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px">
+            <span style="font-size: 16px">🕸️</span>
+            <span style="font-family: Anton, sans-serif; font-size: 14px; color: #f8fafc; letter-spacing: 1px">PROFIL</span>
+          </div>
+          <PlayerRadar :axes="radarAxes(data.stats)" />
+        </div>
+
         <div v-for="sec in sections(data.stats)" :key="sec.label" :style="sCard">
           <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px">
             <span style="font-size: 16px">{{ sec.icon }}</span>
