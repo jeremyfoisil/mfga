@@ -4,9 +4,12 @@ import { sb } from '../../supabase'
 import { sInput, C } from '../../constants/ui'
 
 const props = defineProps<{ value: string; disabled?: boolean; placeholder?: string }>()
-const emit = defineEmits<{ (e: 'update', val: string): void }>()
+const emit = defineEmits<{
+  (e: 'update', val: string): void
+  (e: 'select', player: PlayerRow): void
+}>()
 
-interface PlayerRow { name: string; team: string }
+interface PlayerRow { name: string; team: string; api_id: number }
 
 const query   = ref(props.value)
 const results = ref<PlayerRow[]>([])
@@ -28,7 +31,7 @@ function onInput(e: Event) {
 
 async function search() {
   const { data } = await sb.from('players')
-    .select('name, team')
+    .select('name, team, api_id')
     .ilike('name', `%${query.value}%`)
     .order('name')
     .limit(8)
@@ -40,6 +43,7 @@ async function search() {
 function select(p: PlayerRow) {
   query.value = p.name
   emit('update', p.name)
+  emit('select', p)
   open.value = false
   results.value = []
 }
