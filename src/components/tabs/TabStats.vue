@@ -1,17 +1,49 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { sb } from '../../supabase'
 import { C, sCard } from '../../constants/ui'
 import { getFlag } from '../../utils/ui'
-import { useMatchesStore } from '../../stores/matches'
-import { computeMatchStats, groupByRank, type StatRow } from '../../utils/stats'
+import { groupByRank, type StatRow } from '../../utils/stats'
 
-const matchesStore = useMatchesStore()
+// Classement officiel issu de l'API (players/topscorers, topassists,
+// topyellowcards, topredcards), agrégée par la fonction edge `stats-proxy`.
+// Source faisant foi : évite les doublons de noms qu'on avait en agrégeant les
+// événements stockés par match (ex. « K. Mbappe » vs « Kylian Mbappé »).
+const TTL = 2 * 60_000 // ne re-sollicite l'API qu'une fois toutes les 2 min (quota)
+// Cache au niveau module : persiste entre les montages (les onglets sont
+// démontés à chaque changement dans App.vue).
+let cache: { rows: StatRow[]; at: number } | null = null
 
-const raw = computed(() => computeMatchStats(matchesStore.matches))
-const anyData = computed(() => raw.value.length > 0)
+const rows = ref<StatRow[]>([])
+const loading = ref(true)
+const error = ref<string | null>(null)
+
+async function load() {
+  if (cache && Date.now() - cache.at < TTL) {
+    rows.value = cache.rows
+    loading.value = false
+    return
+  }
+  loading.value = true
+  error.value = null
+  try {
+    const { data, error: err } = await sb.functions.invoke('stats-proxy', { body: {} })
+    if (err) throw err
+    const list = (data as { data: StatRow[] }).data ?? []
+    cache = { rows: list, at: Date.now() }
+    rows.value = list
+  } catch (e) {
+    error.value = (e as Error).message || 'Erreur réseau — réessaie.'
+  } finally {
+    loading.value = false
+  }
+}
+onMounted(load)
+
+const anyData = computed(() => rows.value.length > 0)
 
 // Tournament-wide totals across all players.
-const totals = computed(() => raw.value.reduce((t, s) => {
+const totals = computed(() => rows.value.reduce((t, s) => {
   t.goals += s.goals
   t.assists += s.assists
   t.yellow += s.yellow
@@ -24,10 +56,10 @@ const assists = (s: StatRow) => s.assists
 const yellows = (s: StatRow) => s.yellow
 const reds    = (s: StatRow) => s.red
 
-const allScorers = computed(() => raw.value.filter(s => s.goals > 0)  .sort((a,b) => b.goals   - a.goals))
-const allAssists = computed(() => raw.value.filter(s => s.assists > 0).sort((a,b) => b.assists - a.assists))
-const allYellows = computed(() => raw.value.filter(s => s.yellow > 0) .sort((a,b) => b.yellow  - a.yellow))
-const allReds    = computed(() => raw.value.filter(s => s.red > 0)    .sort((a,b) => b.red     - a.red))
+const allScorers = computed(() => rows.value.filter(s => s.goals > 0)  .sort((a,b) => b.goals   - a.goals))
+const allAssists = computed(() => rows.value.filter(s => s.assists > 0).sort((a,b) => b.assists - a.assists))
+const allYellows = computed(() => rows.value.filter(s => s.yellow > 0) .sort((a,b) => b.yellow  - a.yellow))
+const allReds    = computed(() => rows.value.filter(s => s.red > 0)    .sort((a,b) => b.red     - a.red))
 
 const topScorers = computed(() => allScorers.value.slice(0, 15))
 const topAssists = computed(() => allAssists.value.slice(0, 10))
@@ -44,8 +76,20 @@ const sections = computed(() => [
 
 <template>
   <div>
+    <!-- Loading -->
+    <div v-if="loading && !anyData" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 0; gap: 14px">
+      <div class="stats-spinner"></div>
+      <div style="font-size: 12px; color: #64748b; letter-spacing: 1px; font-family: Anton, sans-serif">CHARGEMENT…</div>
+    </div>
+
+    <!-- Error -->
+    <div v-else-if="error && !anyData" :style="{ ...sCard, textAlign: 'center', padding: '40px 20px' }">
+      <div style="font-size: 40px; margin-bottom: 12px">📡</div>
+      <div style="font-size: 13px; color: #ef4444">{{ error }}</div>
+    </div>
+
     <!-- Empty -->
-    <div v-if="!anyData" :style="{ ...sCard, textAlign: 'center', padding: '40px 20px' }">
+    <div v-else-if="!anyData" :style="{ ...sCard, textAlign: 'center', padding: '40px 20px' }">
       <div style="font-size: 40px; margin-bottom: 12px">📊</div>
       <div style="font-family: Anton, sans-serif; font-size: 14px; color: #475569; letter-spacing: 1px; margin-bottom: 8px">PAS ENCORE DE DONNÉES</div>
       <div style="font-size: 12px; color: #334155">Les statistiques seront disponibles dès le coup d'envoi du premier match.</div>
