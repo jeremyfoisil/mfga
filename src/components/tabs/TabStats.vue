@@ -3,7 +3,10 @@ import { ref, computed, onMounted } from 'vue'
 import { sb } from '../../supabase'
 import { C, sCard } from '../../constants/ui'
 import { getFlag } from '../../utils/ui'
-import { groupByRank, type StatRow } from '../../utils/stats'
+import { groupByRank, computeMatchStats, type StatRow } from '../../utils/stats'
+import { useMatchesStore } from '../../stores/matches'
+
+const matchesStore = useMatchesStore()
 
 // Classement officiel issu de l'API (players/topscorers, topassists,
 // topyellowcards, topredcards), agrégée par la fonction edge `stats-proxy`.
@@ -42,8 +45,12 @@ onMounted(load)
 
 const anyData = computed(() => rows.value.length > 0)
 
-// Tournament-wide totals across all players.
-const totals = computed(() => rows.value.reduce((t, s) => {
+// Tournament-wide totals: derived from the per-match events stored in the DB,
+// NOT from the API leaderboards above. The leaderboards (topscorers, etc.) are
+// each capped at ~20 players, so summing them undercounts the real totals
+// (especially yellow cards, which have a long tail of 1-card players). Counting
+// every goal/assist/card event gives the true tournament totals.
+const totals = computed(() => computeMatchStats(matchesStore.matches).reduce((t, s) => {
   t.goals += s.goals
   t.assists += s.assists
   t.yellow += s.yellow
