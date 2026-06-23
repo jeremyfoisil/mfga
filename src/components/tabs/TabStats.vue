@@ -80,10 +80,11 @@ const allAssists = computed(() => rows.value.filter(s => s.assists > 0).sort((a,
 const allYellows = computed(() => rows.value.filter(s => s.yellow > 0) .sort((a,b) => b.yellow  - a.yellow))
 const allReds    = computed(() => rows.value.filter(s => s.red > 0)    .sort((a,b) => b.red     - a.red))
 
-const topScorers = computed(() => allScorers.value.slice(0, 15))
-const topAssists = computed(() => allAssists.value.slice(0, 10))
-const topYellows = computed(() => allYellows.value.slice(0, 10))
-const topReds    = computed(() => allReds.value.slice(0, 10))
+// On affiche tout le classement renvoyé par l'API (déjà plafonné à ~20 joueurs
+// par catégorie). Pas de slice par nombre de joueurs : il coupait des paliers
+// entiers d'ex æquo (ex. tous les passeurs à 1 passe) et tronquait un groupe au
+// milieu. groupByRank regroupe les ex æquo sur une seule ligne, donc la liste
+// reste compacte. Le tail "+N autres" couvre les joueurs au-delà de l'API.
 
 // "+N autres" = total distinct players in the category (from match events)
 // minus those actually displayed. Clamped at 0 in case the match-event count
@@ -91,10 +92,10 @@ const topReds    = computed(() => allReds.value.slice(0, 10))
 const hiddenCount = (real: number, shown: number) => Math.max(0, real - shown)
 
 const sections = computed(() => [
-  { key: 'goals',   label: 'Buteurs',            icon: '⚽', color: '#22c55e', groups: groupByRank(topScorers.value, goals),   hidden: hiddenCount(playerCounts.value.goals,   topScorers.value.length) },
-  { key: 'assists', label: 'Passeurs décisifs',   icon: '🎯', color: '#60a5fa', groups: groupByRank(topAssists.value, assists), hidden: hiddenCount(playerCounts.value.assists, topAssists.value.length) },
-  { key: 'yellow',  label: 'Cartons jaunes',      icon: '🟨', color: '#fbbf24', groups: groupByRank(topYellows.value, yellows), hidden: hiddenCount(playerCounts.value.yellow,  topYellows.value.length) },
-  { key: 'red',     label: 'Cartons rouges',      icon: '🟥', color: '#ef4444', groups: groupByRank(topReds.value, reds),       hidden: hiddenCount(playerCounts.value.red,     topReds.value.length) },
+  { key: 'goals',   label: 'Buteurs',            icon: '⚽', color: '#22c55e', groups: groupByRank(allScorers.value, goals),   hidden: hiddenCount(playerCounts.value.goals,   allScorers.value.length) },
+  { key: 'assists', label: 'Passeurs décisifs',   icon: '🎯', color: '#60a5fa', groups: groupByRank(allAssists.value, assists), hidden: hiddenCount(playerCounts.value.assists, allAssists.value.length) },
+  { key: 'yellow',  label: 'Cartons jaunes',      icon: '🟨', color: '#fbbf24', groups: groupByRank(allYellows.value, yellows), hidden: hiddenCount(playerCounts.value.yellow,  allYellows.value.length) },
+  { key: 'red',     label: 'Cartons rouges',      icon: '🟥', color: '#ef4444', groups: groupByRank(allReds.value, reds),       hidden: hiddenCount(playerCounts.value.red,     allReds.value.length) },
 ])
 </script>
 
