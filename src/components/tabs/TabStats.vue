@@ -45,18 +45,30 @@ onMounted(load)
 
 const anyData = computed(() => rows.value.length > 0)
 
-// Tournament-wide totals: derived from the per-match events stored in the DB,
-// NOT from the API leaderboards above. The leaderboards (topscorers, etc.) are
-// each capped at ~20 players, so summing them undercounts the real totals
-// (especially yellow cards, which have a long tail of 1-card players). Counting
-// every goal/assist/card event gives the true tournament totals.
-const totals = computed(() => computeMatchStats(matchesStore.matches).reduce((t, s) => {
+// Aggregated per-match events from the DB. Source faisant foi pour les *totaux*
+// et le décompte de joueurs : les classements de l'API (rows) sont plafonnés à
+// ~20 joueurs par catégorie, donc on ne peut en déduire ni le vrai total ni le
+// nombre réel de joueurs concernés (surtout les cartons jaunes, longue traîne
+// de joueurs à 1 carton).
+const matchStats = computed(() => computeMatchStats(matchesStore.matches))
+
+// Tournament-wide totals: every goal/assist/card event counted once.
+const totals = computed(() => matchStats.value.reduce((t, s) => {
   t.goals += s.goals
   t.assists += s.assists
   t.yellow += s.yellow
   t.red += s.red
   return t
 }, { goals: 0, assists: 0, yellow: 0, red: 0 }))
+
+// Real number of distinct players with ≥1 in each category, used for the
+// "+N autres" tail — based on match events, not the capped API leaderboards.
+const playerCounts = computed(() => ({
+  goals:   matchStats.value.filter(s => s.goals   > 0).length,
+  assists: matchStats.value.filter(s => s.assists > 0).length,
+  yellow:  matchStats.value.filter(s => s.yellow  > 0).length,
+  red:     matchStats.value.filter(s => s.red     > 0).length,
+}))
 
 const goals   = (s: StatRow) => s.goals
 const assists = (s: StatRow) => s.assists
@@ -73,11 +85,16 @@ const topAssists = computed(() => allAssists.value.slice(0, 10))
 const topYellows = computed(() => allYellows.value.slice(0, 10))
 const topReds    = computed(() => allReds.value.slice(0, 10))
 
+// "+N autres" = total distinct players in the category (from match events)
+// minus those actually displayed. Clamped at 0 in case the match-event count
+// trails the API leaderboard (e.g. very early, before events are synced).
+const hiddenCount = (real: number, shown: number) => Math.max(0, real - shown)
+
 const sections = computed(() => [
-  { key: 'goals',   label: 'Buteurs',            icon: '⚽', color: '#22c55e', groups: groupByRank(topScorers.value, goals),   hidden: allScorers.value.length - topScorers.value.length },
-  { key: 'assists', label: 'Passeurs décisifs',   icon: '🎯', color: '#60a5fa', groups: groupByRank(topAssists.value, assists), hidden: allAssists.value.length - topAssists.value.length },
-  { key: 'yellow',  label: 'Cartons jaunes',      icon: '🟨', color: '#fbbf24', groups: groupByRank(topYellows.value, yellows), hidden: allYellows.value.length - topYellows.value.length },
-  { key: 'red',     label: 'Cartons rouges',      icon: '🟥', color: '#ef4444', groups: groupByRank(topReds.value, reds),       hidden: allReds.value.length - topReds.value.length },
+  { key: 'goals',   label: 'Buteurs',            icon: '⚽', color: '#22c55e', groups: groupByRank(topScorers.value, goals),   hidden: hiddenCount(playerCounts.value.goals,   topScorers.value.length) },
+  { key: 'assists', label: 'Passeurs décisifs',   icon: '🎯', color: '#60a5fa', groups: groupByRank(topAssists.value, assists), hidden: hiddenCount(playerCounts.value.assists, topAssists.value.length) },
+  { key: 'yellow',  label: 'Cartons jaunes',      icon: '🟨', color: '#fbbf24', groups: groupByRank(topYellows.value, yellows), hidden: hiddenCount(playerCounts.value.yellow,  topYellows.value.length) },
+  { key: 'red',     label: 'Cartons rouges',      icon: '🟥', color: '#ef4444', groups: groupByRank(topReds.value, reds),       hidden: hiddenCount(playerCounts.value.red,     topReds.value.length) },
 ])
 </script>
 
