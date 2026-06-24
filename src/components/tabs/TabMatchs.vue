@@ -96,6 +96,12 @@ function canEditMatchProno(matchId: number) {
   return !hasMatchStarted(m)
 }
 
+// Saisie autorisée seulement sur ses propres pronostics (ou admin) ET tant que
+// le match n'a pas débuté. Empêche d'éditer le score d'un autre participant.
+function canEditPronoInput(matchId: number) {
+  return canEditProno.value && canEditMatchProno(matchId)
+}
+
 // Le joker est consommé définitivement dès que le match sur lequel il est posé
 // a débuté : on ne peut alors plus le retirer ni le reposer ailleurs.
 function isJokerLocked(pid: number | null) {
@@ -228,6 +234,8 @@ function setMatchGoalText(matchId: number, side: 'home' | 'away', text: string) 
 }
 function setProno(pid: number | null, matchId: number, side: 'home' | 'away', val: string) {
   if (pid === null) return
+  // Seul le propriétaire du pronostic (ou l'admin) peut le modifier.
+  if (!canEditProno.value) return
   pronos.setProno(pid, matchId, side, val)
 }
 function toggleJoker(pid: number | null, matchId: number) {
@@ -407,14 +415,14 @@ function toggleJoker(pid: number | null, matchId: number) {
                 </div>
                 <div style="display: flex; align-items: center; gap: 6px; justify-content: center">
                   <input class="score-led" type="number" min="0" max="20" placeholder="–"
-                    :style="{ opacity: canEditMatchProno(m.id) ? 1 : 0.5 }"
-                    :disabled="!canEditMatchProno(m.id)"
+                    :style="{ opacity: canEditPronoInput(m.id) ? 1 : 0.5 }"
+                    :disabled="!canEditPronoInput(m.id)"
                     :value="(getProno(activeParticipant, m.id) as any).home ?? ''"
                     @input="setProno(activeParticipant, m.id, 'home', ($event.target as HTMLInputElement).value)" />
                   <span style="color: #475569; font-weight: 700; font-size: 22px; font-family: Anton, sans-serif">:</span>
                   <input class="score-led" type="number" min="0" max="20" placeholder="–"
-                    :style="{ opacity: canEditMatchProno(m.id) ? 1 : 0.5 }"
-                    :disabled="!canEditMatchProno(m.id)"
+                    :style="{ opacity: canEditPronoInput(m.id) ? 1 : 0.5 }"
+                    :disabled="!canEditPronoInput(m.id)"
                     :value="(getProno(activeParticipant, m.id) as any).away ?? ''"
                     @input="setProno(activeParticipant, m.id, 'away', ($event.target as HTMLInputElement).value)" />
                 </div>
@@ -544,14 +552,14 @@ function toggleJoker(pid: number | null, matchId: number) {
             </div>
             <div style="display: flex; align-items: center; gap: 6px; justify-content: center">
               <input class="score-led" type="number" min="0" max="20" placeholder="–"
-                :style="{ opacity: canEditMatchProno(m.id) ? 1 : 0.5 }"
-                :disabled="!canEditMatchProno(m.id)"
+                :style="{ opacity: canEditPronoInput(m.id) ? 1 : 0.5 }"
+                :disabled="!canEditPronoInput(m.id)"
                 :value="(getProno(activeParticipant, m.id) as any).home ?? ''"
                 @input="setProno(activeParticipant, m.id, 'home', ($event.target as HTMLInputElement).value)" />
               <span style="color: #475569; font-weight: 700; font-size: 22px; font-family: Anton, sans-serif">:</span>
               <input class="score-led" type="number" min="0" max="20" placeholder="–"
-                :style="{ opacity: canEditMatchProno(m.id) ? 1 : 0.5 }"
-                :disabled="!canEditMatchProno(m.id)"
+                :style="{ opacity: canEditPronoInput(m.id) ? 1 : 0.5 }"
+                :disabled="!canEditPronoInput(m.id)"
                 :value="(getProno(activeParticipant, m.id) as any).away ?? ''"
                 @input="setProno(activeParticipant, m.id, 'away', ($event.target as HTMLInputElement).value)" />
             </div>
@@ -696,14 +704,14 @@ function toggleJoker(pid: number | null, matchId: number) {
             </div>
             <div style="display: flex; align-items: center; gap: 6px; justify-content: center">
               <input class="score-led" type="number" min="0" max="20" placeholder="–"
-                :style="{ opacity: canEditMatchProno(m.id) ? 1 : 0.5 }"
-                :disabled="!canEditMatchProno(m.id)"
+                :style="{ opacity: canEditPronoInput(m.id) ? 1 : 0.5 }"
+                :disabled="!canEditPronoInput(m.id)"
                 :value="(getProno(activeParticipant, m.id) as any).home ?? ''"
                 @input="setProno(activeParticipant, m.id, 'home', ($event.target as HTMLInputElement).value)" />
               <span style="color: #475569; font-weight: 700; font-size: 22px; font-family: Anton, sans-serif">:</span>
               <input class="score-led" type="number" min="0" max="20" placeholder="–"
-                :style="{ opacity: canEditMatchProno(m.id) ? 1 : 0.5 }"
-                :disabled="!canEditMatchProno(m.id)"
+                :style="{ opacity: canEditPronoInput(m.id) ? 1 : 0.5 }"
+                :disabled="!canEditPronoInput(m.id)"
                 :value="(getProno(activeParticipant, m.id) as any).away ?? ''"
                 @input="setProno(activeParticipant, m.id, 'away', ($event.target as HTMLInputElement).value)" />
             </div>
