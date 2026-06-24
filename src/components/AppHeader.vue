@@ -118,9 +118,9 @@ function playTrumpSound() {
     <!-- Host countries -->
     <div class="header-hosts" style="display: flex; align-items: center; gap: 10px; margin-top: -22px; margin-bottom: 12px; font-size: 11px; color: #cbd5e1; font-weight: 600">
       <span style="color: #64748b; letter-spacing: 1px; text-transform: uppercase; font-size: 10px">Pays hôtes</span>
-      <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(220,38,38,0.18); border: 1px solid rgba(220,38,38,0.4); padding: 2px 8px; border-radius: 4px">🇺🇸 USA</span>
-      <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(220,38,38,0.18); border: 1px solid rgba(220,38,38,0.4); padding: 2px 8px; border-radius: 4px">🇨🇦 Canada</span>
-      <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(220,38,38,0.18); border: 1px solid rgba(220,38,38,0.4); padding: 2px 8px; border-radius: 4px">🇲🇽 Mexico</span>
+      <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(220,38,38,0.18); border: 1px solid rgba(220,38,38,0.4); padding: 2px 8px; border-radius: 4px"><span class="flag">🇺🇸</span> USA</span>
+      <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(220,38,38,0.18); border: 1px solid rgba(220,38,38,0.4); padding: 2px 8px; border-radius: 4px"><span class="flag">🇨🇦</span> Canada</span>
+      <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(220,38,38,0.18); border: 1px solid rgba(220,38,38,0.4); padding: 2px 8px; border-radius: 4px"><span class="flag">🇲🇽</span> Mexico</span>
     </div>
 
     <!-- Tabs -->
