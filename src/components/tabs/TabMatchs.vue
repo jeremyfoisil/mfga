@@ -13,11 +13,14 @@ import MatchOdds from '../ui/MatchOdds.vue'
 import type { Goal, Card } from '../../types'
 import { sb } from '../../supabase'
 
-// Merge goals + cards of one team into a single timeline (each line carries its emoji)
+// Merge goals + cards of one team into a single timeline (each line carries its emoji).
+// Own goals are stored on the scorer's team but count for the opponent, so a side's
+// goals = its own (non-own) goals + the opponent's own goals it benefits from.
 interface SideEvent { name: string; minute: number; emoji: string; penalty?: boolean; owngoal?: boolean }
-function sideEvents(goals: Goal[], cards: Card[]): SideEvent[] {
+function sideEvents(teamGoals: Goal[], oppGoals: Goal[], cards: Card[]): SideEvent[] {
   return [
-    ...(goals || []).map(g => ({ name: g.name, minute: g.minute, emoji: '⚽', penalty: g.penalty, owngoal: g.owngoal })),
+    ...(teamGoals || []).filter(g => !g.owngoal).map(g => ({ name: g.name, minute: g.minute, emoji: '⚽', penalty: g.penalty })),
+    ...(oppGoals || []).filter(g => g.owngoal).map(g => ({ name: g.name, minute: g.minute, emoji: '⚽', owngoal: true })),
     ...(cards || []).map(c => ({ name: c.name, minute: c.minute, emoji: c.red ? '🟥' : '🟨' })),
   ].sort((a, b) => a.minute - b.minute)
 }
@@ -447,12 +450,12 @@ function toggleJoker(pid: number | null, matchId: number) {
             <div v-if="m.result.goalsHome.length || m.result.goalsAway.length || m.result.cardsHome.length || m.result.cardsAway.length"
               style="margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
               <div style="text-align: right">
-                <div v-for="(e, i) in sideEvents(m.result.goalsHome, m.result.cardsHome)" :key="'h' + i" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
+                <div v-for="(e, i) in sideEvents(m.result.goalsHome, m.result.goalsAway, m.result.cardsHome)" :key="'h' + i" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
                   {{ e.name }}<span v-if="e.owngoal" style="color: #ef4444"> (csc)</span><span v-if="e.penalty" style="color: #f59e0b"> (p)</span> {{ e.emoji }} <span style="color: #64748b">{{ e.minute }}'</span>
                 </div>
               </div>
               <div>
-                <div v-for="(e, i) in sideEvents(m.result.goalsAway, m.result.cardsAway)" :key="'a' + i" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
+                <div v-for="(e, i) in sideEvents(m.result.goalsAway, m.result.goalsHome, m.result.cardsAway)" :key="'a' + i" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
                   <span style="color: #64748b">{{ e.minute }}'</span> {{ e.emoji }}<span v-if="e.penalty" style="color: #f59e0b"> (p)</span><span v-if="e.owngoal" style="color: #ef4444"> (csc)</span> {{ e.name }}
                 </div>
               </div>
@@ -598,12 +601,12 @@ function toggleJoker(pid: number | null, matchId: number) {
         <div v-if="m.homeKnown && m.awayKnown && (m.result.goalsHome.length || m.result.goalsAway.length || m.result.cardsHome.length || m.result.cardsAway.length)"
           style="margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
           <div style="text-align: right">
-            <div v-for="(e, i) in sideEvents(m.result.goalsHome, m.result.cardsHome)" :key="'h' + i" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
+            <div v-for="(e, i) in sideEvents(m.result.goalsHome, m.result.goalsAway, m.result.cardsHome)" :key="'h' + i" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
               {{ e.name }}<span v-if="e.owngoal" style="color: #ef4444"> (csc)</span><span v-if="e.penalty" style="color: #f59e0b"> (p)</span> {{ e.emoji }} <span style="color: #64748b">{{ e.minute }}'</span>
             </div>
           </div>
           <div>
-            <div v-for="(e, i) in sideEvents(m.result.goalsAway, m.result.cardsAway)" :key="'a' + i" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
+            <div v-for="(e, i) in sideEvents(m.result.goalsAway, m.result.goalsHome, m.result.cardsAway)" :key="'a' + i" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
               <span style="color: #64748b">{{ e.minute }}'</span> {{ e.emoji }}<span v-if="e.penalty" style="color: #f59e0b"> (p)</span><span v-if="e.owngoal" style="color: #ef4444"> (csc)</span> {{ e.name }}
             </div>
           </div>
@@ -746,12 +749,12 @@ function toggleJoker(pid: number | null, matchId: number) {
         <div v-if="m.result.goalsHome.length || m.result.goalsAway.length || m.result.cardsHome.length || m.result.cardsAway.length"
           style="margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
           <div style="text-align: right">
-            <div v-for="(e, i) in sideEvents(m.result.goalsHome, m.result.cardsHome)" :key="'h' + i" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
+            <div v-for="(e, i) in sideEvents(m.result.goalsHome, m.result.goalsAway, m.result.cardsHome)" :key="'h' + i" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
               {{ e.name }}<span v-if="e.owngoal" style="color: #ef4444"> (csc)</span><span v-if="e.penalty" style="color: #f59e0b"> (p)</span> {{ e.emoji }} <span style="color: #64748b">{{ e.minute }}'</span>
             </div>
           </div>
           <div>
-            <div v-for="(e, i) in sideEvents(m.result.goalsAway, m.result.cardsAway)" :key="'a' + i" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
+            <div v-for="(e, i) in sideEvents(m.result.goalsAway, m.result.goalsHome, m.result.cardsAway)" :key="'a' + i" style="font-size: 10px; color: #cbd5e1; line-height: 1.7">
               <span style="color: #64748b">{{ e.minute }}'</span> {{ e.emoji }}<span v-if="e.penalty" style="color: #f59e0b"> (p)</span><span v-if="e.owngoal" style="color: #ef4444"> (csc)</span> {{ e.name }}
             </div>
           </div>
