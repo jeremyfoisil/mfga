@@ -107,7 +107,7 @@ function isJokerLocked(pid: number | null) {
 }
 
 function canToggleJoker(matchId: number) {
-  return canEditMatchProno(matchId) && !isJokerLocked(activeParticipant.value)
+  return canEditProno.value && canEditMatchProno(matchId) && !isJokerLocked(activeParticipant.value)
 }
 
 function activeParticipantName() {
@@ -232,6 +232,8 @@ function setProno(pid: number | null, matchId: number, side: 'home' | 'away', va
 }
 function toggleJoker(pid: number | null, matchId: number) {
   if (pid === null) return
+  // Seul le propriétaire du pronostic (ou l'admin) peut poser/retirer son joker.
+  if (!canEditProno.value) return
   // Joker déjà consommé sur un match débuté : interdit de le déplacer.
   if (isJokerLocked(pid) && pronos.jokers[pid] !== matchId) return
   pronos.toggleJoker(pid, matchId, pronos.pronostics[pid]?.[matchId])
