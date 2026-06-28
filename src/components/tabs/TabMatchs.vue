@@ -265,11 +265,11 @@ function toggleJoker(pid: number | null, matchId: number) {
         <span v-if="liveMatches.length" style="background: rgba(0,0,0,0.3); border-radius: 999px; padding: 0 6px; font-size: 10px">{{ liveMatches.length }}</span>
       </button>
       <button
-        :style="{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontFamily: 'Anton, sans-serif', fontSize: '12px', letterSpacing: '1px', textTransform: 'uppercase', background: activeStageType === 'group' ? 'linear-gradient(135deg, #dc2626, #991b1b)' : 'transparent', color: activeStageType === 'group' ? '#fff' : '#64748b', boxShadow: activeStageType === 'group' ? '0 2px 0 #1e3a8a' : 'none' }"
-        @click="activeStageType = 'group'">⚽ Groupes</button>
-      <button
         :style="{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontFamily: 'Anton, sans-serif', fontSize: '12px', letterSpacing: '1px', textTransform: 'uppercase', background: activeStageType === 'knockout' ? 'linear-gradient(135deg, #f59e0b, #b45309)' : 'transparent', color: activeStageType === 'knockout' ? '#0a0e1a' : '#64748b', boxShadow: activeStageType === 'knockout' ? '0 2px 0 #451a03' : 'none', opacity: !hasKOMatches && activeStageType !== 'knockout' ? 0.4 : 1 }"
         @click="activeStageType = 'knockout'">🏆 Élimination</button>
+      <button
+        :style="{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontFamily: 'Anton, sans-serif', fontSize: '12px', letterSpacing: '1px', textTransform: 'uppercase', background: activeStageType === 'group' ? 'linear-gradient(135deg, #dc2626, #991b1b)' : 'transparent', color: activeStageType === 'group' ? '#fff' : '#64748b', boxShadow: activeStageType === 'group' ? '0 2px 0 #1e3a8a' : 'none' }"
+        @click="activeStageType = 'group'">⚽ Groupes</button>
     </div>
 
     <!-- Groupe pills -->
