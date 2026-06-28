@@ -114,11 +114,11 @@ toujours dans la ligne).
 
 ### Cron (`pg_cron`)
 
-Nouvelle migration, calquée sur `sync-odds-daily`. Job `sync-schedule-hourly`,
-toutes les heures (`0 * * * *`), `net.http_post` vers
-`…/functions/v1/sync-schedule`. Une requête fixtures par exécution (coût quota
-négligeable). Suffisant pour intégrer un nouveau round dans l'heure suivant sa
-publication.
+Nouvelle migration, calquée sur `sync-odds-daily`. Job `sync-schedule-daily`,
+**une fois par jour à 08:00 heure de Paris** (= `0 6 * * *` en UTC, CEST=UTC+2),
+`net.http_post` vers `…/functions/v1/sync-schedule`. Une requête fixtures par
+exécution (coût quota négligeable). Un nouveau round est intégré le lendemain
+matin de sa publication — l'admin peut toujours forcer via « SYNC HORAIRES ».
 
 ### Ajustement UI (`TabMatchs.vue`)
 
