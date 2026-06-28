@@ -1,5 +1,5 @@
 import type { Match } from '../types'
-import { R32_SLOTS, FEEDS, FINAL_MATCH, THIRD_MATCH, STAGE_OF, roundLabel, type Seed } from '../constants/bracket'
+import { R32_SLOTS, FEEDS, FINAL_MATCH, THIRD_MATCH, roundLabel, type Seed } from '../constants/bracket'
 
 export interface GroupRank { group: string; team: string; rank: number }
 export interface BracketTeam { name: string | null; won: boolean }
@@ -85,7 +85,8 @@ export function buildBracket(matches: Match[], ranks: GroupRank[]): BracketModel
     const used = new Set<number>()
     for (const mn of slots) {
       const sub = subtree[mn]
-      const mt = pool.find(x => !used.has(x.id) && (sub.size === 0 || (sub.has(x.home) && sub.has(x.away))))
+      const skipContainment = (stage === 'final' || stage === '3rd') && sub.size === 0
+      const mt = pool.find(x => !used.has(x.id) && (skipContainment || (sub.has(x.home) && sub.has(x.away))))
       if (!mt) continue
       used.add(mt.id)
       slotMatch[mn] = mt
@@ -138,6 +139,13 @@ export function buildBracket(matches: Match[], ranks: GroupRank[]): BracketModel
     const a = parseInt(f.scoreTop), b = parseInt(f.scoreBottom)
     if (a > b) { champion = f.top.name; f.top.won = true }
     else if (b > a) { champion = f.bottom.name; f.bottom.won = true }
+  }
+
+  const third = cells[THIRD_MATCH]
+  if (third && third.scoreTop !== '' && third.scoreBottom !== '') {
+    const a = parseInt(third.scoreTop), b = parseInt(third.scoreBottom)
+    if (a > b) third.top.won = true
+    else if (b > a) third.bottom.won = true
   }
 
   return { cells, champion }

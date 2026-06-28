@@ -93,4 +93,12 @@ describe('buildBracket', () => {
     expect(model.cells[73]).toBeUndefined()
     expect(model.champion).toBeNull()
   })
+
+  it('marque le vainqueur de la 3e place au score', () => {
+    const matches = [m(1103, '3rd', 'A1', 'B1', '2', '0')]
+    const model = buildBracket(matches, groups)
+    expect(model.cells[103]).toBeDefined()
+    expect(model.cells[103].top.won).toBe(true)   // A1 gagne la 3e place
+    expect(model.cells[103].bottom.won).toBe(false)
+  })
 })
