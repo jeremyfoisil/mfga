@@ -1,55 +1,55 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "jsr:@supabase/supabase-js@2"
 
-const RAPIDAPI_KEY = Deno.env.get('RAPIDAPI_KEY') ?? '4f5231439dmshc22c83b5cde5ef3p1d9c86jsn739feb141fa8'
+const APISPORTS_KEY = Deno.env.get('APISPORTS_KEY')
+if (!APISPORTS_KEY) throw new Error('APISPORTS_KEY environment secret is not set')
+const API_HOST = 'v3.football.api-sports.io'
+const LEAGUE = 1
+const SEASON = 2026
 
-interface ApiMatch {
-  id: number
-  home: string
-  away: string
-  date: string
-  time: string   // "13:00 UTC-6"
-  group: string | null
-  venue: string
-  round: string
+// Mêmes alias que sync-wc26 / sync-odds : noms API-Football qui diffèrent de notre DB (anglais).
+const TEAM_ALIAS: Record<string, string> = {
+  'Türkiye': 'Turkey',
+  'Cape Verde Islands': 'Cape Verde',
+  'Congo DR': 'DR Congo',
+  'Czechia': 'Czech Republic',
+}
+const norm = (n: string) => TEAM_ALIAS[n] ?? n
+
+// league.round api-sports → code de stage KO. null pour la phase de poules ou un round inconnu.
+function roundToStage(round: string): string | null {
+  const r = round.toLowerCase()
+  if (r.startsWith('group')) return null
+  if (r.includes('round of 32')) return 'r32'
+  if (r.includes('round of 16')) return 'r16'
+  if (r.includes('quarter')) return 'qf'
+  if (r.includes('semi')) return 'sf'
+  if (r.includes('3rd place') || r.includes('third place')) return '3rd'
+  if (r.includes('final')) return 'final' // après les exclusions ci-dessus
+  return null
 }
 
-interface ApiDay {
-  date: string
-  matches: ApiMatch[]
+// Nom d'équipe encore indéterminé (placeholder de tableau, ex. "Winner Group A", "W73") ?
+function isPlaceholder(name: string | null | undefined): boolean {
+  if (!name) return true
+  return /^(winner|loser|w\d|l\d|\d)/i.test(name.trim())
 }
 
-const TEAM_EN_FR: Record<string, string> = {
-  "Mexico": "Mexique", "South Africa": "Afrique du Sud", "South Korea": "Corée du Sud", "Czech Republic": "Rép. tchèque",
-  "Canada": "Canada", "Bosnia & Herzegovina": "Bosnie-Herzégovine", "Qatar": "Qatar", "Switzerland": "Suisse",
-  "Brazil": "Brésil", "Morocco": "Maroc", "Haiti": "Haïti", "Scotland": "Écosse",
-  "USA": "États-Unis", "Paraguay": "Paraguay", "Australia": "Australie", "Turkey": "Turquie",
-  "Germany": "Allemagne", "Curaçao": "Curaçao", "Ivory Coast": "Côte d'Ivoire", "Ecuador": "Équateur",
-  "Netherlands": "Pays-Bas", "Japan": "Japon", "Sweden": "Suède", "Tunisia": "Tunisie",
-  "Belgium": "Belgique", "Egypt": "Égypte", "Iran": "Iran", "New Zealand": "Nouvelle-Zélande",
-  "Spain": "Espagne", "Cape Verde": "Cap-Vert", "Saudi Arabia": "Arabie Saoudite", "Uruguay": "Uruguay",
-  "France": "France", "Senegal": "Sénégal", "Iraq": "Irak", "Norway": "Norvège",
-  "Argentina": "Argentine", "Algeria": "Algérie", "Austria": "Autriche", "Jordan": "Jordanie",
-  "Portugal": "Portugal", "DR Congo": "RD Congo", "Uzbekistan": "Ouzbékistan", "Colombia": "Colombie",
-  "England": "Angleterre", "Croatia": "Croatie", "Ghana": "Ghana", "Panama": "Panama",
+interface ApiFixture {
+  fixture: { id: number; date: string; venue: { name: string | null } | null }
+  league: { round: string }
+  teams: { home: { name: string | null }; away: { name: string | null } }
 }
 
-// "13:00 UTC-6" → "13:00:00-06"  (format timetz Postgres)
-function toTimetz(apiTime: string): string {
-  const m = apiTime.match(/(\d{1,2}):(\d{2})\s*UTC([+-]\d+)/)
-  if (!m) return apiTime
-  const h   = m[1].padStart(2, '0')
-  const min = m[2]
-  const off = parseInt(m[3])
-  const sign = off < 0 ? '-' : '+'
-  const abs  = Math.abs(off).toString().padStart(2, '0')
-  return `${h}:${min}:00${sign}${abs}`
+// ISO "2026-06-28T19:00:00+00:00" → { date:"2026-06-28", time:"19:00:00+00" }
+function splitIso(iso: string): { date: string; time: string } | null {
+  const m = iso.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):\d{2}([+-]\d{2}):?\d{2}/)
+  if (!m) return null
+  return { date: m[1], time: `${m[2]}:${m[3]}:00${m[4]}` }
 }
 
-// Code de tableau type "2A", "W73", "L101", "3A/B/C/D/F" → true
-function isPlaceholder(name: string): boolean {
-  return /^(\d|[WL]\d)/.test(name)
-}
+const apiFetch = (path: string) =>
+  fetch(`https://${API_HOST}/${path}`, { headers: { 'x-apisports-key': APISPORTS_KEY } })
 
 Deno.serve(async () => {
   const supabase = createClient(
@@ -57,61 +57,48 @@ Deno.serve(async () => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   )
 
-  const apiRes = await fetch('https://wc26-live-football-api.p.rapidapi.com/schedule', {
-    headers: {
-      'x-rapidapi-host': 'wc26-live-football-api.p.rapidapi.com',
-      'x-rapidapi-key': RAPIDAPI_KEY,
-    },
-  })
+  const apiRes = await apiFetch(`fixtures?league=${LEAGUE}&season=${SEASON}`)
   if (!apiRes.ok) {
-    return new Response(JSON.stringify({ error: 'API fetch failed', status: apiRes.status }), {
+    return new Response(JSON.stringify({ error: 'fixtures fetch failed', status: apiRes.status }), {
       status: 502, headers: { 'Content-Type': 'application/json' },
     })
   }
+  const { response: fixtures }: { response: ApiFixture[] } = await apiRes.json()
 
-  const { data: days }: { data: ApiDay[] } = await apiRes.json()
+  const rows: Record<string, unknown>[] = []
+  let skippedUnknownRound = 0
 
-  const upserts: Record<string, unknown>[] = []
-  for (const day of days) {
-    for (const m of day.matches) {
-      const row: Record<string, unknown> = {
-        id:         m.id,
-        match_date: m.date,
-        match_time: toTimetz(m.time),
-        venue:      m.venue || null,
-        round:      m.round || null,
-      }
-
-      if (m.group) {
-        // Phase de poules : équipes déjà connues, rien à faire côté noms
-      } else {
-        // Phase KO : détecter si les équipes sont connues ou encore des codes
-        const homeIsKnown = m.home && !isPlaceholder(m.home)
-        const awayIsKnown = m.away && !isPlaceholder(m.away)
-
-        if (homeIsKnown) {
-          row.home_team  = TEAM_EN_FR[m.home] ?? m.home
-          row.home_label = null
-        } else {
-          row.home_label = m.home || null
-        }
-
-        if (awayIsKnown) {
-          row.away_team  = TEAM_EN_FR[m.away] ?? m.away
-          row.away_label = null
-        } else {
-          row.away_label = m.away || null
-        }
-      }
-
-      upserts.push(row)
+  for (const fx of fixtures) {
+    const round = fx.league?.round ?? ''
+    const stage = roundToStage(round)
+    if (stage === null) {
+      // poule → ignoré silencieusement ; round KO inconnu → compté pour diagnostic
+      if (!round.toLowerCase().startsWith('group')) skippedUnknownRound++
+      continue
     }
+
+    const when = splitIso(fx.fixture?.date ?? '')
+    const homeName = fx.teams?.home?.name ?? null
+    const awayName = fx.teams?.away?.name ?? null
+    const homeKnown = !isPlaceholder(homeName)
+    const awayKnown = !isPlaceholder(awayName)
+
+    rows.push({
+      id: fx.fixture.id,
+      stage,
+      group_id: null,
+      home_team:  homeKnown ? norm(homeName!) : null,
+      away_team:  awayKnown ? norm(awayName!) : null,
+      home_label: homeKnown ? null : (homeName || '?'),
+      away_label: awayKnown ? null : (awayName || '?'),
+      match_date: when?.date ?? null,
+      match_time: when?.time ?? null,
+      venue: fx.fixture?.venue?.name ?? null,
+    })
   }
 
-  for (let i = 0; i < upserts.length; i += 50) {
-    const { error } = await supabase
-      .from('matches')
-      .upsert(upserts.slice(i, i + 50), { onConflict: 'id' })
+  for (let i = 0; i < rows.length; i += 50) {
+    const { error } = await supabase.from('matches').upsert(rows.slice(i, i + 50), { onConflict: 'id' })
     if (error) {
       return new Response(JSON.stringify({ error: error.message }), {
         status: 500, headers: { 'Content-Type': 'application/json' },
@@ -119,7 +106,7 @@ Deno.serve(async () => {
     }
   }
 
-  return new Response(JSON.stringify({ synced: upserts.length }), {
+  return new Response(JSON.stringify({ synced: rows.length, skippedUnknownRound }), {
     headers: { 'Content-Type': 'application/json' },
   })
 })
