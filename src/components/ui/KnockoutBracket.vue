@@ -72,8 +72,8 @@ function colLabel(col: number[]): string { return roundLabel(col[0]) }
             <div class="bthird">
               <div class="bcol-label">3e place</div>
               <div v-if="model.cells[THIRD_MATCH]" class="bcell">
-                <div class="brow"><span class="bflag">{{ model.cells[THIRD_MATCH].top.name ? getFlag(model.cells[THIRD_MATCH].top.name!) : '⬜' }}</span><span class="bcode">{{ model.cells[THIRD_MATCH].top.name ? teamCode(model.cells[THIRD_MATCH].top.name!) : '—' }}</span><span class="bscore">{{ model.cells[THIRD_MATCH].scoreTop }}</span></div>
-                <div class="brow"><span class="bflag">{{ model.cells[THIRD_MATCH].bottom.name ? getFlag(model.cells[THIRD_MATCH].bottom.name!) : '⬜' }}</span><span class="bcode">{{ model.cells[THIRD_MATCH].bottom.name ? teamCode(model.cells[THIRD_MATCH].bottom.name!) : '—' }}</span><span class="bscore">{{ model.cells[THIRD_MATCH].scoreBottom }}</span></div>
+                <div class="brow" :class="{ won: model.cells[THIRD_MATCH].top.won }"><span class="bflag">{{ model.cells[THIRD_MATCH].top.name ? getFlag(model.cells[THIRD_MATCH].top.name!) : '⬜' }}</span><span class="bcode">{{ model.cells[THIRD_MATCH].top.name ? teamCode(model.cells[THIRD_MATCH].top.name!) : '—' }}</span><span class="bscore">{{ model.cells[THIRD_MATCH].scoreTop }}</span></div>
+                <div class="brow" :class="{ won: model.cells[THIRD_MATCH].bottom.won }"><span class="bflag">{{ model.cells[THIRD_MATCH].bottom.name ? getFlag(model.cells[THIRD_MATCH].bottom.name!) : '⬜' }}</span><span class="bcode">{{ model.cells[THIRD_MATCH].bottom.name ? teamCode(model.cells[THIRD_MATCH].bottom.name!) : '—' }}</span><span class="bscore">{{ model.cells[THIRD_MATCH].scoreBottom }}</span></div>
               </div>
               <div v-else class="bcell-empty">à définir</div>
             </div>
@@ -119,7 +119,7 @@ function colLabel(col: number[]): string { return roundLabel(col[0]) }
 .brow.won .bcode { color: #fbbf24; font-weight: 800; }
 .brow.won .bscore { color: #fbbf24; }
 .brow:not(.won) { opacity: 0.72; }
-.bflag { font-size: 13px; line-height: 1; }
+.bflag { font-size: 13px; line-height: 1; font-family: 'Noto Color Emoji', 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif; }
 .bcode { flex: 1; font-size: 10px; font-weight: 700; color: #e2e8f0; letter-spacing: 0.5px; }
 .bscore { font-size: 11px; font-family: Anton, sans-serif; color: #94a3b8; min-width: 9px; text-align: right; }
 .blive { position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: #ef4444; animation: pulse 1s infinite; }
