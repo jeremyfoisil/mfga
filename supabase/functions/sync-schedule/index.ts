@@ -16,6 +16,35 @@ const TEAM_ALIAS: Record<string, string> = {
 }
 const norm = (n: string) => TEAM_ALIAS[n] ?? n
 
+// api-sports nomme les stades ; on les mappe vers le libellé de ville FIFA déjà
+// utilisé en phase de poules, pour un affichage cohérent (ville, pas stade).
+const VENUE_CITY: Record<string, string> = {
+  'Estadio Banorte': 'Mexico City',
+  'Estadio Akron': 'Guadalajara (Zapopan)',
+  'Estadio BBVA': 'Monterrey (Guadalupe)',
+  'SoFi Stadium': 'Los Angeles (Inglewood)',
+  "Levi's Stadium": 'San Francisco Bay Area (Santa Clara)',
+  'MetLife Stadium': 'New York/New Jersey (East Rutherford)',
+  'Gillette Stadium': 'Boston (Foxborough)',
+  'AT&T Stadium': 'Dallas (Arlington)',
+  'Hard Rock Stadium': 'Miami (Miami Gardens)',
+  'NRG Stadium': 'Houston',
+  'Mercedes-Benz Stadium': 'Atlanta',
+  'Lumen Field': 'Seattle',
+  'BMO Field': 'Toronto',
+  'BC Place': 'Vancouver',
+  'Arrowhead Stadium': 'Kansas City',
+  'Lincoln Financial Field': 'Philadelphia',
+}
+
+// Stade api-sports → ville. Map prioritaire, puis champ city de l'API, puis le
+// nom du stade en dernier recours (futur stade non répertorié).
+function venueCity(v: { name: string | null; city: string | null } | null): string | null {
+  if (!v) return null
+  if (v.name && VENUE_CITY[v.name]) return VENUE_CITY[v.name]
+  return v.city ?? v.name ?? null
+}
+
 // league.round api-sports → code de stage KO. null pour la phase de poules ou un round inconnu.
 function roundToStage(round: string): string | null {
   const r = round.toLowerCase()
@@ -36,7 +65,7 @@ function isPlaceholder(name: string | null | undefined): boolean {
 }
 
 interface ApiFixture {
-  fixture: { id: number; date: string; venue: { name: string | null } | null }
+  fixture: { id: number; date: string; venue: { name: string | null; city: string | null } | null }
   league: { round: string }
   teams: { home: { name: string | null }; away: { name: string | null } }
 }
@@ -93,7 +122,7 @@ Deno.serve(async () => {
       away_label: awayKnown ? null : (awayName || '?'),
       match_date: when?.date ?? null,
       match_time: when?.time ?? null,
-      venue: fx.fixture?.venue?.name ?? null,
+      venue: venueCity(fx.fixture?.venue ?? null),
     })
   }
 
