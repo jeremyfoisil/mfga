@@ -184,7 +184,10 @@ const liveDisplayMatches = computed(() => {
   return nextMatch.value ? [nextMatch.value] : []
 })
 function matchStageLabel(m: import('../../types').Match) {
-  return m.stage === 'group' ? `GROUPE ${m.group}` : (m.round || 'ÉLIMINATION')
+  return m.stage === 'group' ? `GROUPE ${m.group}` : koStageLabel(m.stage)
+}
+function koStageLabel(stage: string): string {
+  return KO_STAGES.find(s => s.id === stage)?.label ?? 'ÉLIMINATION'
 }
 
 function getProno(pid: number | null, matchId: number) {
@@ -509,7 +512,7 @@ function toggleJoker(pid: number | null, matchId: number) {
       <!-- KO header -->
       <div :style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', borderBottom: '1px solid ' + C.border, background: 'rgba(15,23,42,0.5)' }">
         <div style="display: flex; align-items: center; gap: 8px">
-          <span class="anton" style="font-size: 11px; color: #f59e0b; letter-spacing: 1.5px">{{ m.round }}</span>
+          <span class="anton" style="font-size: 11px; color: #f59e0b; letter-spacing: 1.5px">{{ koStageLabel(m.stage) }}</span>
           <template v-if="m.matchDate">
             <span :style="{ color: C.muted, fontSize: '10px' }">·</span>
             <span :style="{ color: '#94a3b8', fontSize: '10px' }">📅 {{ formatDate(m.matchDate) }}</span>
