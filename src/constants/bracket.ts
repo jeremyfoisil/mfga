@@ -67,6 +67,6 @@ export function STAGE_OF(match: number): 'r32' | 'r16' | 'qf' | 'sf' | 'final' |
 
 export function roundLabel(match: number): string {
   const s = STAGE_OF(match)
-  return s === 'r32' ? '32es' : s === 'r16' ? '8es' : s === 'qf' ? 'Quarts'
+  return s === 'r32' ? '16es' : s === 'r16' ? '8es' : s === 'qf' ? 'Quarts'
     : s === 'sf' ? 'Demies' : s === '3rd' ? '3e place' : 'Finale'
 }

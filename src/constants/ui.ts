@@ -10,8 +10,8 @@ export const C = {
 export const TABS = ["Participants", "Matchs", "Bonus", "Classement", "Statistiques", "Joueurs"] as const
 
 export const KO_STAGES: KOStage[] = [
-  { id: "r32",   label: "32èmes" },
-  { id: "r16",   label: "16èmes" },
+  { id: "r32",   label: "16es" },
+  { id: "r16",   label: "8es" },
   { id: "qf",    label: "Quarts" },
   { id: "sf",    label: "Demies" },
   { id: "3rd",   label: "3e place" },

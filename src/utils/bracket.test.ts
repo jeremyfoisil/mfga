@@ -101,4 +101,32 @@ describe('buildBracket', () => {
     expect(model.cells[103].top.won).toBe(true)   // A1 gagne la 3e place
     expect(model.cells[103].bottom.won).toBe(false)
   })
+
+  it('projette le vainqueur dans le slot du tour suivant sans match réel', () => {
+    // 73 = 2A/2B → A2 vs B2, A2 gagne 1-0. Aucun match de 16es en base.
+    const matches = [m(1073, 'r32', 'A2', 'B2', '1', '0')]
+    const model = buildBracket(matches, groups)
+    expect(model.cells[73].top.name).toBe('A2')
+    expect(model.cells[73].top.won).toBe(true)        // vainqueur marqué au score
+    // slot 89 (8es) projeté : A2 en haut (enfant 73), pas encore joué
+    expect(model.cells[89]).toBeDefined()
+    expect(model.cells[89].top.name).toBe('A2')
+    expect(model.cells[89].scoreTop).toBe('')
+    expect(model.cells[89].top.won).toBe(false)
+  })
+
+  it('projette le vainqueur du 2e enfant en bas du slot parent', () => {
+    // 75 = 1F/2C → F1 vs C2, F1 gagne 2-1. 73 absent → haut du 89 inconnu.
+    const matches = [m(1075, 'r32', 'F1', 'C2', '2', '1')]
+    const model = buildBracket(matches, groups)
+    expect(model.cells[89].bottom.name).toBe('F1')
+    expect(model.cells[89].top.name).toBeNull()
+  })
+
+  it('ne projette pas tant qu\'un match nul n\'est pas départagé', () => {
+    // 73 nul, aucun match parent pour départager → pas de projection
+    const matches = [m(1073, 'r32', 'A2', 'B2', '1', '1')]
+    const model = buildBracket(matches, groups)
+    expect(model.cells[89]).toBeUndefined()
+  })
 })

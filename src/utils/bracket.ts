@@ -118,35 +118,68 @@ export function buildBracket(matches: Match[], ranks: GroupRank[]): BracketModel
     }
   }
 
-  // 7. vainqueurs par progression : l'équipe d'un enfant qui figure dans le match parent a gagné.
-  for (const parentStr of Object.keys(FEEDS)) {
+  // 7. vainqueur de chaque match : au score si décisif, sinon par progression
+  //    (équipe réapparaissant dans le vrai match parent — gère les tirs au but).
+  const scoreWinner = (c: BracketCell): string | null => {
+    if (c.scoreTop === '' || c.scoreBottom === '') return null
+    const a = parseInt(c.scoreTop), b = parseInt(c.scoreBottom)
+    if (a > b) return c.top.name
+    if (b > a) return c.bottom.name
+    return null // nul : tirs au but, indécidable au score
+  }
+  const winner: Record<number, string | null> = {}
+  for (const mn of ALL_MATCHES) winner[mn] = cells[mn] ? scoreWinner(cells[mn]) : null
+
+  // Repli progression pour les matchs nuls : si le vrai match parent existe,
+  // l'équipe d'un enfant qui y figure est la qualifiée.
+  for (const [parentStr, kids] of Object.entries(FEEDS)) {
     const parent = Number(parentStr)
-    if (parent === THIRD_MATCH) continue // 3e place : pas un "tour suivant"
-    const parentTeams = slotTeams[parent]
-    if (!parentTeams) continue
-    for (const child of FEEDS[parent]) {
+    if (parent === THIRD_MATCH) continue
+    const pc = cells[parent]
+    if (!pc) continue
+    const parentNames = [pc.top.name, pc.bottom.name]
+    for (const child of kids) {
+      if (winner[child]) continue
       const cc = cells[child]
       if (!cc) continue
-      if (cc.top.name && parentTeams.includes(cc.top.name)) cc.top.won = true
-      if (cc.bottom.name && parentTeams.includes(cc.bottom.name)) cc.bottom.won = true
+      const adv = [cc.top.name, cc.bottom.name].find(n => n && parentNames.includes(n)) ?? null
+      if (adv) winner[child] = adv
     }
   }
 
-  // 8. champion = vainqueur au score de la finale (pas de tour suivant)
-  let champion: string | null = null
-  const f = cells[FINAL_MATCH]
-  if (f && f.scoreTop !== '' && f.scoreBottom !== '') {
-    const a = parseInt(f.scoreTop), b = parseInt(f.scoreBottom)
-    if (a > b) { champion = f.top.name; f.top.won = true }
-    else if (b > a) { champion = f.bottom.name; f.bottom.won = true }
+  // 8. marquer le vainqueur sur chaque cellule existante
+  for (const mn of ALL_MATCHES) {
+    const c = cells[mn], w = winner[mn]
+    if (!c || !w) continue
+    if (c.top.name === w) c.top.won = true
+    else if (c.bottom.name === w) c.bottom.won = true
   }
 
-  const third = cells[THIRD_MATCH]
-  if (third && third.scoreTop !== '' && third.scoreBottom !== '') {
-    const a = parseInt(third.scoreTop), b = parseInt(third.scoreBottom)
-    if (a > b) third.top.won = true
-    else if (b > a) third.bottom.won = true
+  // 9. projeter les qualifiés dans les slots parents sans vrai match, pour que le
+  //    vainqueur apparaisse au tour suivant avant même la création du match.
+  //    (3e place : perdants des demies.)
+  const loserOf = (mn: number): string | null => {
+    const c = cells[mn], w = winner[mn]
+    if (!c || !w) return null
+    return c.top.name === w ? c.bottom.name : c.top.name
   }
+  for (const [parentStr, kids] of Object.entries(FEEDS)) {
+    const parent = Number(parentStr)
+    if (cells[parent]) continue // vrai match déjà présent
+    const isThird = parent === THIRD_MATCH
+    const topName = isThird ? loserOf(kids[0]) : winner[kids[0]]
+    const botName = isThird ? loserOf(kids[1]) : winner[kids[1]]
+    if (!topName && !botName) continue
+    cells[parent] = {
+      match: parent, round: roundLabel(parent),
+      top: { name: topName, won: false },
+      bottom: { name: botName, won: false },
+      scoreTop: '', scoreBottom: '', live: false,
+    }
+  }
+
+  // 10. champion = vainqueur de la finale
+  const champion: string | null = winner[FINAL_MATCH] ?? null
 
   return { cells, champion }
 }
